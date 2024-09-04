@@ -1,2 +1,3 @@
 
 add_subdirectory(01_window_example)
+add_subdirectory(02_triangle_example)
