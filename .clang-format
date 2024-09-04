@@ -1,0 +1,41 @@
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: All
+AlwaysBreakAfterReturnType: All
+BinPackArguments: false
+BinPackParameters: false
+SortIncludes: true
+SortUsingDeclarations: true
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: false
+AlwaysBreakTemplateDeclarations: Yes
+AlignAfterOpenBracket: AlwaysBreak
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+AlignConsecutiveAssignments: false
+FixNamespaceComments: false
+AlignEscapedNewlines: Left
+PointerAlignment: Left
+UseCRLF: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterEnum: true
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterUnion: true
+  BeforeElse: true
+ColumnLimit: 120
+StatementMacros:
+  - mn_defer
+  - mn_assert
+  - mn_assert_msg
+  - mn_unreachable
+  - mn_unreachable_msg
+TabWidth: 4
+UseTab: Always
