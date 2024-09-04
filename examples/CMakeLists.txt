@@ -2,3 +2,4 @@
 add_subdirectory(01_window_example)
 add_subdirectory(02_triangle_example)
 add_subdirectory(03_indexed_drawing_example)
+add_subdirectory(04_colors_example)
