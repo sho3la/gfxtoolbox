@@ -26,19 +26,15 @@ const char* fragmentShader = "#version 450 core\n"
 void
 init()
 {
-	/////////////////////////////////////////////////////////
+	// clang-format off
 
 	float vertices[] = {
-		-0.5f,
-		-0.5f,
-		0.0f, // left
-		0.5f,
-		-0.5f,
-		0.0f, // right
-		0.0f,
-		0.5f,
-		0.0f // top
+	 -0.5f, -0.5f, 0.0f, // left
+	  0.5f, -0.5f, 0.0f, // right
+	  0.0f,  0.5f, 0.0f  // top
 	};
+
+	// clang-format on
 
 	vertex_buffer_id = gfx_backend->createVertexBuffer(vertices, sizeof(vertices), gfx::BUFFER_USAGE::STATIC);
 	gpu_mesh_id = gfx_backend->createGPUMesh(vertex_buffer_id);
