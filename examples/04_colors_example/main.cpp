@@ -93,7 +93,7 @@ main()
 {
 	// initialize gfx
 	// ---------------------------------------
-	gfx_backend->init("gfx indexed drawing", 800, 600);
+	gfx_backend->init("gfx colors", 800, 600);
 	gfx_backend->start(init, input, render);
 
 	return 0;
