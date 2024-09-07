@@ -16,3 +16,8 @@ target_include_directories(${PROJECT_NAME}
 	${CMAKE_SOURCE_DIR}/external/glew/include
 	${CMAKE_SOURCE_DIR}/external/glfw-3.4/include
 )
+
+target_compile_definitions(${PROJECT_NAME}
+	PRIVATE
+	DATA_DIR="${CMAKE_SOURCE_DIR}/examples/data/"
+)

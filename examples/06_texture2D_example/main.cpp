@@ -78,7 +78,7 @@ init()
 
 	// load and create a texture
 	// -------------------------
-	auto image = std::make_shared<gfx::Image>("C:/Users/Shalaan/Downloads/opengl.jpg");
+	auto image = std::make_shared<gfx::Image>(DATA_DIR "opengl.jpg");
 
 	texture2d_id = gfx_backend->createTexture2D(
 		image.get(),
