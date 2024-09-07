@@ -37,7 +37,11 @@ init()
 	// clang-format on
 
 	vertex_buffer_id = gfx_backend->createVertexBuffer(vertices, sizeof(vertices), gfx::BUFFER_USAGE::STATIC);
-	gpu_mesh_id = gfx_backend->createGPUMesh(vertex_buffer_id);
+
+	gfx::Attributes attributes;
+	attributes.append(gfx::GPU_Attribute(gfx::GPU_Attribute::VEC3, "POSITION"));
+
+	gpu_mesh_id = gfx_backend->createGPUMesh(vertex_buffer_id, attributes);
 
 	// build and compile our shader program
 	gpu_program = gfx_backend->createGPUProgram(vertexShader, fragmentShader);
