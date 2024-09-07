@@ -44,7 +44,7 @@ namespace gfx
 		createIndexBuffer(void* data, uint32_t size, BUFFER_USAGE usage);
 
 		uint32_t
-		createGPUMesh(uint32_t vertex_buffer);
+		createGPUMesh(uint32_t vertex_buffer, const Attributes& attribs);
 
 		uint32_t
 		createGPUMesh(uint32_t vertex_buffer, uint32_t index_buffer, const Attributes& attribs);

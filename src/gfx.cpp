@@ -229,7 +229,7 @@ namespace gfx
 	}
 
 	uint32_t
-	GFX::createGPUMesh(uint32_t vertex_buffer)
+	GFX::createGPUMesh(uint32_t vertex_buffer, const Attributes& attribs)
 	{
 		GLuint id = -1;
 		glGenVertexArrays(1, &id);
@@ -244,8 +244,19 @@ namespace gfx
 
 		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+		for (int i = 0; i < attribs.getElementCount(); i++)
+		{
+			auto offset_val = static_cast<uintptr_t>(attribs.m_attributes[i].offset);
+
+			glEnableVertexAttribArray(i);
+			glVertexAttribPointer(
+				i,
+				attribs.m_attributes[i].components,
+				GL_FLOAT,
+				GL_FALSE,
+				attribs.getSize(),
+				reinterpret_cast<void*>(offset_val));
+		}
 
 		glBindVertexArray(0);
 
