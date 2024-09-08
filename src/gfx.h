@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <string>
@@ -69,6 +71,9 @@ namespace gfx
 
 		void
 		bindGPUProgram(uint32_t gpu_program);
+
+		void
+		setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat);
 
 		void
 		bindTexture1D(uint32_t texture1d);

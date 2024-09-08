@@ -112,6 +112,10 @@ namespace gfx
 
 			return false;
 		}
+
+		// configure global opengl state
+		glEnable(GL_DEPTH_TEST);
+
 		return true;
 	}
 
@@ -470,6 +474,12 @@ namespace gfx
 	GFX::bindGPUProgram(uint32_t gpu_program)
 	{
 		glUseProgram(gpu_program);
+	}
+
+	void
+	GFX::setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat)
+	{
+		glUniformMatrix4fv(glGetUniformLocation(gpu_program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 	}
 
 	void
