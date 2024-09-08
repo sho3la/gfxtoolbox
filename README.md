@@ -33,7 +33,7 @@ Sample showing how to render quad with texture 2D.<br>
 <br>
 <br>
 
-### 07 - Box 3D <img src="./screenshots/07_example.PNG" width="150px" align="right">
+### 07 - Box 3D <img src="./screenshots/07_example.gif" width="150px" align="right">
 Sample showing how to render box 3d with texture 2D.<br>
 <br>
 <br>
