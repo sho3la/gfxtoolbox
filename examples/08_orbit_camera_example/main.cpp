@@ -226,7 +226,7 @@ main()
 {
 	// initialize gfx
 	// ---------------------------------------
-	gfx_backend->init("gfx box 3d", scrn_width, scrn_height);
+	gfx_backend->init("gfx Orbit Camera", scrn_width, scrn_height);
 	gfx_backend->start(init, input, render);
 
 	return 0;
