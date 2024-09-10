@@ -39,6 +39,11 @@ Sample showing how to render box 3d with texture 2D.<br>
 <br>
 
 ### 08 - Orbit Camera <img src="./screenshots/08_example.gif" width="150px" align="right">
-Sample showing how to render box 3d using orbit camera control.<br>
+Sample showing how to render box 3d with orbit camera control.<br>
+<br>
+<br>
+
+### 09 - Grid 3D <img src="./screenshots/09_example.gif" width="150px" align="right">
+Sample showing how to render grid 3d with orbit camera control.<br>
 <br>
 <br>
