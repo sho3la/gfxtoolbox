@@ -3,47 +3,8 @@ small gfx library with examples with OpenGL4 C++
 
 # Examples
 
-### 01 - Window <img src="./screenshots/01_example.PNG" width="150px" align="right">
-Sample showing how to create rendering window.<br>
-<br>
-<br>
-
-### 02 - Triangle <img src="./screenshots/02_example.PNG" width="150px" align="right">
-Sample showing how to render simple triangle.<br>
-<br>
-<br>
-
-### 03 - Indexed drawing <img src="./screenshots/03_example.PNG" width="150px" align="right">
-Sample showing how to render quad with indexed drawing.<br>
-<br>
-<br>
-
-### 04 - Colors <img src="./screenshots/04_example.PNG" width="150px" align="right">
-Sample showing how to render quad with colors using glsl shader.<br>
-<br>
-<br>
-
-### 05 - Texture 1D <img src="./screenshots/05_example.PNG" width="150px" align="right">
-Sample showing how to render quad with texture 1D.<br>
-<br>
-<br>
-
-### 06 - Texture 2D <img src="./screenshots/06_example.PNG" width="150px" align="right">
-Sample showing how to render quad with texture 2D.<br>
-<br>
-<br>
-
-### 07 - Box 3D <img src="./screenshots/07_example.gif" width="150px" align="right">
-Sample showing how to render box 3d with texture 2D.<br>
-<br>
-<br>
-
-### 08 - Orbit Camera <img src="./screenshots/08_example.gif" width="150px" align="right">
-Sample showing how to render box 3d with orbit camera control.<br>
-<br>
-<br>
-
-### 09 - Grid 3D <img src="./screenshots/09_example.gif" width="150px" align="right">
-Sample showing how to render grid 3d with orbit camera control.<br>
-<br>
-<br>
+| | | |
+|:-------------------------:|:-------------------------:|:-------------------------:|
+|01 - Window <br> <img width="200" src="./screenshots/01_example.PNG"> | 02 - Triangle <br> <img width="200" src="./screenshots/02_example.PNG">| 03 - Indexed <br> <img width="200" src="./screenshots/03_example.PNG">|
+|04 - Colors <br> <img width="200" src="./screenshots/04_example.PNG"> | 05 - Texture 1D <br> <img width="200" src="./screenshots/05_example.PNG">| 06 - Texture 2D <br> <img width="200" src="./screenshots/06_example.PNG">|
+|07 - Box 3D <br> <img width="200" src="./screenshots/07_example.gif"> |08 - Orbit Camera<br>  <img width="200" src="./screenshots/08_example.gif">| 09 - Grid 3D<br> <img width="200" src="./screenshots/09_example.gif">|
