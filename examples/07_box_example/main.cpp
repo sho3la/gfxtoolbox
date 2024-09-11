@@ -6,7 +6,13 @@
 
 // global
 auto gfx_backend = std::make_shared<gfx::GFX>();
+
+int scrn_width = 800;
+int scrn_height = 600;
 uint32_t vertex_buffer_id, gpu_mesh_id, gpu_program, texture2d_id;
+
+// create transformations
+glm::mat4 projection = glm::mat4(1.0f);
 
 // clang-format off
 
@@ -116,13 +122,9 @@ init()
 		gfx::Filtering_Mode::LINEAR,
 		gfx::Filtering_Mode::LINEAR,
 		false);
-}
 
-void
-input(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
+	// initialize projection matrix
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.1f, 100.0f);
 }
 
 void
@@ -134,14 +136,11 @@ render()
 	gfx_backend->bindTexture2D(texture2d_id);
 	gfx_backend->bindGPUProgram(gpu_program);
 
-	// create transformations
 	glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 	glm::mat4 view = glm::mat4(1.0f);
-	glm::mat4 projection = glm::mat4(1.0f);
 
 	model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
 	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-	projection = glm::perspective(glm::radians(45.0f), (float)800 / (float)600, 0.1f, 100.0f);
 
 	gfx_backend->setGPUProgramMat4(gpu_program, "model", model);
 	gfx_backend->setGPUProgramMat4(gpu_program, "view", view);
@@ -150,13 +149,24 @@ render()
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 36);
 }
 
+void
+resize(int width, int height)
+{
+	scrn_width = width;
+	scrn_height = height;
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
+}
+
 int
 main()
 {
 	// initialize gfx
 	// ---------------------------------------
-	gfx_backend->init("gfx box 3d", 800, 600);
-	gfx_backend->start(init, input, render);
+	gfx_backend->init("gfx box 3d", scrn_width, scrn_height);
+	gfx_backend->on_Init(init);
+	gfx_backend->on_Render(render);
+	gfx_backend->on_Resize(resize);
+	gfx_backend->start();
 
 	return 0;
 }

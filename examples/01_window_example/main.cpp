@@ -15,20 +15,15 @@ render()
 	gfx_backend->clearBuffer();
 }
 
-void
-input(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
-
 int
 main()
 {
 	// initialize gfx
 	// ---------------------------------------
 	gfx_backend->init("gfx window", 800, 600);
-	gfx_backend->start(init, input, render);
+	gfx_backend->on_Init(init);
+	gfx_backend->on_Render(render);
+	gfx_backend->start();
 
 	return 0;
 }

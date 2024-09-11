@@ -156,35 +156,15 @@ init()
 }
 
 void
-scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+mouse_scroll(double xoffset, double yoffset)
 {
 	camState.zoom += orbitcam.scrollSensitivity * static_cast<float>(yoffset);
 	camState.zoom = glm::clamp(camState.zoom, -2.0f, 2.0f);
 }
 
 void
-input(GLFWwindow* window)
+mouse_move(double xpos, double ypos)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
-	double xpos, ypos;
-	glfwGetCursorPos(window, &xpos, &ypos);
-
-	glfwSetScrollCallback(window, scroll_callback);
-
-	auto lbutton_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-	if (lbutton_state == GLFW_PRESS && !orbitcam.is_draging)
-	{
-		orbitcam.is_draging = true;
-		orbitcam.startMouse = glm::vec2(-(float)xpos, (float)ypos);
-		orbitcam.startCameraState = camState;
-	}
-	else if (lbutton_state == GLFW_RELEASE)
-	{
-		orbitcam.is_draging = false;
-	}
-
 	if (orbitcam.is_draging)
 	{
 		glm::vec2 currentMouse = glm::vec2(-(float)xpos, (float)ypos);
@@ -193,6 +173,22 @@ input(GLFWwindow* window)
 
 		// Clamp to avoid going too far when orbitting up/down
 		camState.angles.y = glm::clamp(camState.angles.y, -glm::pi<float>() / 2 + 1e-5f, glm::pi<float>() / 2 - 1e-5f);
+	}
+}
+
+void
+mouse_button(int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !orbitcam.is_draging)
+	{
+		orbitcam.is_draging = true;
+		orbitcam.startMouse = gfx_backend->getMouse_position();
+		orbitcam.startMouse.x *= -1;
+		orbitcam.startCameraState = camState;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		orbitcam.is_draging = false;
 	}
 }
 
@@ -221,13 +217,28 @@ render()
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 36);
 }
 
+void
+resize(int width, int height)
+{
+	scrn_width = width;
+	scrn_height = height;
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
+}
+
 int
 main()
 {
 	// initialize gfx
 	// ---------------------------------------
 	gfx_backend->init("gfx Orbit Camera", scrn_width, scrn_height);
-	gfx_backend->start(init, input, render);
+	gfx_backend->on_Init(init);
+	gfx_backend->on_Render(render);
+	gfx_backend->on_Resize(resize);
+	gfx_backend->on_MouseScroll(mouse_scroll);
+	gfx_backend->on_MouseMove(mouse_move);
+	gfx_backend->on_MouseButton(mouse_button);
+
+	gfx_backend->start();
 
 	return 0;
 }

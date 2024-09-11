@@ -42,6 +42,9 @@ struct OrbitalCamera
 
 		azimuth = azimuth + xoffset;
 		elevation = elevation + yoffset;
+
+		// clamp to range [-90, 90] around the horizontal axis
+		elevation = glm::clamp(elevation, -90.0f, 90.0f);
 	}
 
 	float distance;	 // Distance from the target
@@ -162,40 +165,40 @@ init()
 }
 
 void
-scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+mouse_scroll(double xoffset, double yoffset)
 {
 	camera.zoom(yoffset);
 }
 
 void
-input(GLFWwindow* window)
+mouse_move(double xpos, double ypos)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
-	double xpos, ypos;
-	glfwGetCursorPos(window, &xpos, &ypos);
-
-	glfwSetScrollCallback(window, scroll_callback);
-
-	float mouseX = 0;
-	float mouseY = 0;
-
-	auto lbutton_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-	if (lbutton_state == GLFW_PRESS && camera.is_draging == false)
-	{
-		camera.start_pos = glm::vec2(xpos, ypos);
-		camera.is_draging = true;
-	}
-	else if (lbutton_state == GLFW_RELEASE)
-	{
-		camera.is_draging = false;
-	}
-
 	if (camera.is_draging)
 	{
 		camera.rotate(xpos, ypos);
 	}
+}
+
+void
+mouse_button(int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && camera.is_draging == false)
+	{
+		camera.is_draging = true;
+		camera.start_pos = gfx_backend->getMouse_position();
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		camera.is_draging = false;
+	}
+}
+
+void
+resize(int width, int height)
+{
+	scrn_width = width;
+	scrn_height = height;
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
 }
 
 void
@@ -222,7 +225,14 @@ main()
 	// initialize gfx
 	// ---------------------------------------
 	gfx_backend->init("gfx grid 3d", scrn_width, scrn_height);
-	gfx_backend->start(init, input, render);
+	gfx_backend->on_Init(init);
+	gfx_backend->on_Render(render);
+	gfx_backend->on_Resize(resize);
+	gfx_backend->on_MouseScroll(mouse_scroll);
+	gfx_backend->on_MouseMove(mouse_move);
+	gfx_backend->on_MouseButton(mouse_button);
+
+	gfx_backend->start();
 
 	return 0;
 }

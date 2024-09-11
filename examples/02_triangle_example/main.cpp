@@ -48,13 +48,6 @@ init()
 }
 
 void
-input(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
-
-void
 render()
 {
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
@@ -71,7 +64,9 @@ main()
 	// load gfx
 	// ---------------------------------------
 	gfx_backend->init("gfx triangle", 800, 600);
-	gfx_backend->start(init, input, render);
+	gfx_backend->on_Init(init);
+	gfx_backend->on_Render(render);
+	gfx_backend->start();
 
 	return 0;
 }
