@@ -13,10 +13,11 @@
 
 #include <iostream>
 #include <string>
+#include <map>
+#include <functional>
 
 namespace gfx
 {
-
 	class GFX
 	{
 	public:
@@ -28,7 +29,28 @@ namespace gfx
 		init(const char* window_title, int window_width, int window_height);
 
 		void
-		start(void (*init)(), void (*input)(GLFWwindow* window), void (*render)());
+		on_Init(std::function<void()> function);
+
+		void
+		on_Render(std::function<void()> function);
+
+		void
+		on_Resize(std::function<void(int width, int height)> function);
+
+		void
+		on_MouseMove(std::function<void(double x, double y)> function);
+
+		void
+		on_MouseScroll(std::function<void(double xoffset, double yoffset)> function);
+
+		void
+		on_MouseButton(std::function<void(int button, int action, int mods)> function);
+
+		void
+		start();
+
+		glm::vec2
+		getMouse_position();
 
 		void
 		setClearColor(glm::vec4 color);
@@ -90,5 +112,13 @@ namespace gfx
 	private:
 		glm::vec4 m_clearcolor;
 		GLFWwindow* window;
+		
+		// gfx api callbacks
+		std::function<void()> m_initCallback;
+		std::function<void()> m_renderCallback;
+		std::function<void(int width, int height)> m_resizeCallback;
+		std::function<void(double xoffset, double yoffset)> m_scrollCallback;
+		std::function<void(double x, double y)> m_mouseMoveCallback;
+		std::function<void(int button, int action, int mods)> m_mousePressedCallback;
 	};
 } // namespace gfx

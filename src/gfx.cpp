@@ -65,15 +65,6 @@ namespace gfx
 		return res;
 	}
 
-	// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-	void
-	framebuffer_size_callback(GLFWwindow* window, int width, int height)
-	{
-		// make sure the viewport matches the new window dimensions; note that width and
-		// height will be significantly larger than specified on retina displays.
-		glViewport(0, 0, width, height);
-	}
-
 	// API
 	GFX::GFX() : m_clearcolor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f)) {}
 
@@ -102,7 +93,6 @@ namespace gfx
 			return false;
 		}
 		glfwMakeContextCurrent(window);
-		glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 		auto res = glewInit();
 		if (res != GLEW_OK)
@@ -120,23 +110,123 @@ namespace gfx
 	}
 
 	void
-	GFX::start(void (*init)(), void (*input)(GLFWwindow* window), void (*render)())
+	GFX::on_Init(std::function<void()> function)
 	{
-		init();
+		m_initCallback = function;
+	}
+
+	void
+	GFX::on_Render(std::function<void()> function)
+	{
+		m_renderCallback = function;
+	}
+
+	void
+	GFX::on_Resize(std::function<void(int width, int height)> function)
+	{
+		m_resizeCallback = function;
+		glfwSetWindowUserPointer(window, this);
+
+		auto inner_call = [](GLFWwindow* window, int width, int height) {
+			// Capture 'this' to access the member variable
+			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
+			if (gfx)
+			{
+				if (gfx->m_resizeCallback)
+					gfx->m_resizeCallback(width, height);
+
+				glViewport(0, 0, width, height);
+			}
+		};
+
+		glfwSetFramebufferSizeCallback(window, inner_call);
+	}
+
+	void
+	GFX::on_MouseMove(std::function<void(double x, double y)> function)
+	{
+		m_mouseMoveCallback = function;
+		glfwSetWindowUserPointer(window, this);
+
+		auto inner_call = [](GLFWwindow* window, double x, double y) {
+			// Capture 'this' to access the member variable
+			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
+			if (gfx)
+			{
+				if (gfx->m_mouseMoveCallback)
+					gfx->m_mouseMoveCallback(x, y);
+			}
+		};
+
+		glfwSetCursorPosCallback(window, inner_call);
+	}
+
+	void
+	GFX::on_MouseScroll(std::function<void(double xoffset, double yoffset)> function)
+	{
+		m_scrollCallback = function;
+		glfwSetWindowUserPointer(window, this);
+
+		auto inner_call = [](GLFWwindow* window, double xoffset, double yoffset) {
+			// Capture 'this' to access the member variable
+			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
+			if (gfx)
+			{
+				if (gfx->m_scrollCallback)
+					gfx->m_scrollCallback(xoffset, yoffset);
+			}
+		};
+
+		glfwSetScrollCallback(window, inner_call);
+	}
+
+	void
+	GFX::on_MouseButton(std::function<void(int button, int action, int mods)> function)
+	{
+		m_mousePressedCallback = function;
+		glfwSetWindowUserPointer(window, this);
+
+		auto inner_call = [](GLFWwindow* window, int button, int action, int mods) {
+			// Capture 'this' to access the member variable
+			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
+			if (gfx)
+			{
+				if (gfx->m_mousePressedCallback)
+					gfx->m_mousePressedCallback(button, action, mods);
+			}
+		};
+
+		glfwSetMouseButtonCallback(window, inner_call);
+	}
+
+	void
+	GFX::start()
+	{
+		if (m_initCallback)
+			m_initCallback();
+
+		// call default resizing
+		on_Resize(m_resizeCallback);
 
 		// render loop
 		while (!glfwWindowShouldClose(window))
 		{
-
-			input(window);
-
-			render();
+			if (m_renderCallback)
+				m_renderCallback();
 
 			// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 			// -------------------------------------------------------------------------------
 			glfwSwapBuffers(window);
 			glfwPollEvents();
 		}
+	}
+
+	glm::vec2
+	GFX::getMouse_position()
+	{
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
+		return glm::vec2(xpos, ypos);
 	}
 
 	void
