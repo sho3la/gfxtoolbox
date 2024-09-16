@@ -26,6 +26,7 @@ target_link_libraries(${PROJECT_NAME}
 	glfw
 	glew
 	stb
+	imgui
 )
 
 # list include directories
@@ -35,6 +36,7 @@ target_include_directories(${PROJECT_NAME}
 	${CMAKE_SOURCE_DIR}/external/glew/include
 	${CMAKE_SOURCE_DIR}/external/glfw-3.4/include
 	${CMAKE_SOURCE_DIR}/external/glm-1.0.1/
+	${CMAKE_SOURCE_DIR}/external/imgui-1.91.1/
 )
 
 # enable C++17

@@ -2,6 +2,8 @@
 
 #include "gfx.h"
 
+#include <imgui.h>
+
 struct OrbitalCamera
 {
 	OrbitalCamera(float distance, float azimuth, float elevation)
@@ -196,6 +198,9 @@ mouse_button(int button, int action, int mods)
 void
 resize(int width, int height)
 {
+	if (width == 0 || height == 0)
+		return;
+
 	scrn_width = width;
 	scrn_height = height;
 	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
@@ -204,6 +209,8 @@ resize(int width, int height)
 void
 render()
 {
+	ImGui::ShowDemoWindow();
+
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
 	gfx_backend->clearBuffer();
 

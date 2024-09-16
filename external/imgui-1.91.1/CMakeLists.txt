@@ -11,6 +11,8 @@ set(HEADER_FILES
 	imstb_textedit.h
 	imstb_truetype.h
 	imfilebrowser.h
+	backends/imgui_impl_opengl3.h
+	backends/imgui_impl_glfw.h
 )
 
 # list the source files
@@ -20,6 +22,8 @@ set(SOURCE_FILES
 	imgui_draw.cpp
 	imgui_widgets.cpp
 	imgui_tables.cpp
+	backends/imgui_impl_opengl3.cpp
+	backends/imgui_impl_glfw.cpp
 )
 
 # add library target
@@ -52,8 +56,13 @@ generate_export_header(${PROJECT_NAME}
 	EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/Exports.h
 )
 
+target_link_libraries(${PROJECT_NAME}
+	glfw
+)
+
 # list include directories
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_SOURCE_DIR}/external/glfw-3.4/include
 )
