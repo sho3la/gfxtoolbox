@@ -1,5 +1,9 @@
 #include "gfx.h"
 
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
 #include <iostream>
 
 namespace gfx
@@ -70,7 +74,13 @@ namespace gfx
 
 	GFX::~GFX()
 	{
+		// Cleanup
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
 		// glfw: terminate, clearing all previously allocated GLFW resources.
+		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
 
@@ -102,6 +112,21 @@ namespace gfx
 
 			return false;
 		}
+
+		// Setup Dear ImGui context
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO& io = ImGui::GetIO();
+		(void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+
+		// Setup Dear ImGui style
+		ImGui::StyleColorsDark();
+
+		// Setup Platform/Renderer backends
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 130");
 
 		// configure global opengl state
 		glEnable(GL_DEPTH_TEST);
@@ -155,6 +180,8 @@ namespace gfx
 			{
 				if (gfx->m_mouseMoveCallback)
 					gfx->m_mouseMoveCallback(x, y);
+
+				ImGui_ImplGlfw_CursorPosCallback(window, x, y);
 			}
 		};
 
@@ -172,7 +199,10 @@ namespace gfx
 			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
 			if (gfx)
 			{
-				if (gfx->m_scrollCallback)
+				ImGuiIO& io = ImGui::GetIO();
+				if (io.WantCaptureMouse)
+					ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
+				else if (gfx->m_scrollCallback)
 					gfx->m_scrollCallback(xoffset, yoffset);
 			}
 		};
@@ -191,8 +221,13 @@ namespace gfx
 			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
 			if (gfx)
 			{
-				if (gfx->m_mousePressedCallback)
+				ImGuiIO& io = ImGui::GetIO();
+				if (io.WantCaptureMouse)
+					ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+				else if (gfx->m_mousePressedCallback)
 					gfx->m_mousePressedCallback(button, action, mods);
+
+				
 			}
 		};
 
@@ -211,13 +246,20 @@ namespace gfx
 		// render loop
 		while (!glfwWindowShouldClose(window))
 		{
+			glfwPollEvents();
+
+			// Start the Dear ImGui frame
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
 			if (m_renderCallback)
 				m_renderCallback();
 
-			// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-			// -------------------------------------------------------------------------------
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 			glfwSwapBuffers(window);
-			glfwPollEvents();
 		}
 	}
 

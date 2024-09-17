@@ -24,6 +24,7 @@ option(BUILD_EXAMPLES "Build example applications that showcase." ON)
 add_subdirectory(external/glew EXCLUDE_FROM_ALL)
 add_subdirectory(external/glfw-3.4)
 add_subdirectory(external/stb)
+add_subdirectory(external/imgui-1.91.1)
 
 add_subdirectory(src)
 
