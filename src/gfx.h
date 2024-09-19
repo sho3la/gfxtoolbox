@@ -98,6 +98,9 @@ namespace gfx
 			bool enable_mipmaps);
 
 		uint32_t
+		createFramebuffer(int width, int height);
+
+		uint32_t
 		createGPUProgram(const char* vs, const char* fs);
 
 		void
