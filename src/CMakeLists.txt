@@ -9,6 +9,7 @@ set(HEADER_FILES
 	attributes.h
 	gpu_attribute.h
 	Image.h
+	Image3D.h
 )
 
 set(SOURCE_FILES
@@ -16,6 +17,7 @@ set(SOURCE_FILES
 	attributes.cpp
 	gpu_attribute.cpp
 	Image.cpp
+	Image3D.cpp
 )
 
 # add library target
