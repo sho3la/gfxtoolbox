@@ -1,8 +1,8 @@
 #include "gfx.h"
 
-#include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <imgui.h>
 
 #include <iostream>
 
@@ -226,8 +226,6 @@ namespace gfx
 					ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 				else if (gfx->m_mousePressedCallback)
 					gfx->m_mousePressedCallback(button, action, mods);
-
-				
 			}
 		};
 
@@ -555,6 +553,63 @@ namespace gfx
 	}
 
 	uint32_t
+	GFX::createTexture3D(
+		Image3D* img,
+		Wrapping_Mode wrap_mode,
+		Filtering_Mode minifying_mode,
+		Filtering_Mode magnifying_mode,
+		bool enable_mipmaps)
+	{
+		GLuint id = -1;
+
+		if (!img->hasData())
+		{
+			std::cout << "Empty image check image file" << std::endl;
+			return id;
+		}
+
+		glGenTextures(1, &id);
+
+		if (id == -1)
+		{
+			std::cout << "Cannot generate Texture3D" << std::endl;
+			return id;
+		}
+
+		glBindTexture(GL_TEXTURE_3D, id);
+
+		glTexImage3D(
+			GL_TEXTURE_2D,
+			0,
+			GL_R32F,
+			img->getWidth(),
+			img->getHeight(),
+			img->getDepth(),
+			0,
+			GL_R32F,
+			GL_FLOAT,
+			img->getData().data());
+
+		if (enable_mipmaps)
+			glGenerateMipmap(GL_TEXTURE_3D);
+
+		auto res = _wrapping_mode(wrap_mode);
+
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, res);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, res);
+
+		auto minifying = _filtering_mode(minifying_mode);
+		auto magnifying = _filtering_mode(magnifying_mode);
+
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, minifying);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, magnifying);
+
+		glBindTexture(GL_TEXTURE_3D, 0);
+
+		return id;
+	}
+
+	uint32_t
 	GFX::createGPUProgram(const char* vs, const char* fs)
 	{
 		// vertex shader
@@ -627,9 +682,14 @@ namespace gfx
 	}
 
 	void
+	GFX::bindTexture3D(uint32_t texture3d)
+	{
+		glBindTexture(GL_TEXTURE_3D, texture3d);
+	}
+
+	void
 	GFX::draw(GFX_Primitive type, uint32_t gpu_mesh_id, uint32_t vertices_count)
 	{
-
 		glBindVertexArray(gpu_mesh_id);
 
 		if (type == POINTS)

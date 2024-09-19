@@ -1,5 +1,6 @@
 #pragma once
 #include "Image.h"
+#include "Image3D.h"
 #include "attributes.h"
 #include "enums.h"
 #include "gpu_attribute.h"
@@ -89,6 +90,14 @@ namespace gfx
 			bool enable_mipmaps);
 
 		uint32_t
+		createTexture3D(
+			Image3D* img,
+			Wrapping_Mode wrap_mode,
+			Filtering_Mode minifying_mode,
+			Filtering_Mode magnifying_mode,
+			bool enable_mipmaps);
+
+		uint32_t
 		createGPUProgram(const char* vs, const char* fs);
 
 		void
@@ -102,6 +111,9 @@ namespace gfx
 
 		void
 		bindTexture2D(uint32_t texture2d);
+
+		void
+		bindTexture3D(uint32_t texture3d);
 
 		void
 		draw(GFX_Primitive type, uint32_t gpu_mesh_id, uint32_t vertices_count);
