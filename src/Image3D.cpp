@@ -58,6 +58,22 @@ namespace gfx
 		return res;
 	}
 
+	void
+	Image3D::setData(std::vector<float>& in_data)
+	{
+		int index = 0;
+		for (int z = 0; z < depth; ++z)
+		{
+			for (int y = 0; y < height; ++y)
+			{
+				for (int x = 0; x < width; ++x)
+				{
+					data[z][y][x] = in_data[index++];
+				}
+			}
+		}
+	}
+
 	bool
 	Image3D::hasData()
 	{

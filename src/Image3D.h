@@ -20,6 +20,9 @@ namespace gfx
 		std::vector<float>
 		getData();
 
+		void
+		setData(std::vector<float>& data);
+
 		bool
 		hasData();
 

@@ -578,8 +578,9 @@ namespace gfx
 
 		glBindTexture(GL_TEXTURE_3D, id);
 
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage3D(
-			GL_TEXTURE_2D,
+			GL_TEXTURE_3D,
 			0,
 			GL_R32F,
 			img->getWidth(),
@@ -597,6 +598,7 @@ namespace gfx
 
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, res);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, res);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, res);
 
 		auto minifying = _filtering_mode(minifying_mode);
 		auto magnifying = _filtering_mode(magnifying_mode);
