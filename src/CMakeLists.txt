@@ -10,6 +10,7 @@ set(HEADER_FILES
 	gpu_attribute.h
 	Image.h
 	Image3D.h
+	gfx_fbo.h
 )
 
 set(SOURCE_FILES
@@ -18,6 +19,7 @@ set(SOURCE_FILES
 	gpu_attribute.cpp
 	Image.cpp
 	Image3D.cpp
+	gfx_fbo.cpp
 )
 
 # add library target

@@ -107,6 +107,9 @@ namespace gfx
 		setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat);
 
 		void
+		setGPUProgramFloat(uint32_t gpu_program, const std::string& name, const float& val);
+
+		void
 		bindTexture1D(uint32_t texture1d);
 
 		void
