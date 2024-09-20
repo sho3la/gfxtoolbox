@@ -130,6 +130,8 @@ namespace gfx
 
 		// configure global opengl state
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		return true;
 	}
@@ -708,6 +710,8 @@ namespace gfx
 			glDrawArrays(GL_LINE_STRIP, 0, vertices_count);
 		else if (type == TRIANGLES)
 			glDrawArrays(GL_TRIANGLES, 0, vertices_count);
+
+		glBindVertexArray(0);
 	}
 
 	void
@@ -723,6 +727,8 @@ namespace gfx
 			glDrawElements(GL_LINE_STRIP, indices_count, GL_UNSIGNED_INT, (void*)0);
 		else if (type == TRIANGLES)
 			glDrawElements(GL_TRIANGLES, indices_count, GL_UNSIGNED_INT, (void*)0);
+
+		glBindVertexArray(0);
 	}
 
 } // namespace gfx
