@@ -53,13 +53,17 @@ const char* fragmentShaderSource = R"(
 		#version 450 core
 		out vec4 FragColor;
 
-		void main() {
+		uniform float scr_height;
+
+		void main()
+		{
 			vec3 top = vec3(0.8,0.8,0.8);
 			vec3 bottom = vec3(0.3,0.3,0.3);
-			float gradient = gl_FragCoord.y / 600.0; // Assuming the framebuffer height is 600
-			FragColor = vec4(mix(bottom, top, 1 - gradient), 1.0); // Color from white (top) to gray (bottom)
-		}
-		)";
+			float gradient = float(gl_FragCoord.y / scr_height);
+
+			// Smooth the gradient by interpolating
+			FragColor = vec4(mix(bottom, top, smoothstep(0.0, 1.0, 1 - gradient)), 1.0); // Color from gray (bottom) to light gray (top)
+		})";
 
 void
 init()
@@ -120,6 +124,7 @@ resize(int width, int height)
 
 	scrn_width = width;
 	scrn_height = height;
+	frame_buffer->Resize(width, height);
 }
 
 void
@@ -130,6 +135,8 @@ render_pass_1()
 	gfx_backend->clearBuffer();
 
 	gfx_backend->bindGPUProgram(gpu_program2);
+	glUniform1f(glGetUniformLocation(gpu_program2, "scr_height"), scrn_height);
+
 	gfx_backend->draw_indexed(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 6);
 
 	frame_buffer->Unbind();
