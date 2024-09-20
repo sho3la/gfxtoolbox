@@ -73,4 +73,10 @@ namespace gfx
 			createFramebuffer();
 		}
 	}
+
+	unsigned int
+	Framebuffer::GetTexture() const
+	{
+		return texture;
+	}
 } // namespace gfx
