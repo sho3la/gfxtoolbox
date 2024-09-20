@@ -134,6 +134,8 @@ render_pass_1()
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
 	gfx_backend->clearBuffer();
 
+	ImGui::ShowDemoWindow();
+
 	gfx_backend->bindGPUProgram(gpu_program2);
 	gfx_backend->setGPUProgramFloat(gpu_program2, "scr_height", scrn_height);
 
