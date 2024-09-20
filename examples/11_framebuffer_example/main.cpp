@@ -135,7 +135,7 @@ render_pass_1()
 	gfx_backend->clearBuffer();
 
 	gfx_backend->bindGPUProgram(gpu_program2);
-	glUniform1f(glGetUniformLocation(gpu_program2, "scr_height"), scrn_height);
+	gfx_backend->setGPUProgramFloat(gpu_program2, "scr_height", scrn_height);
 
 	gfx_backend->draw_indexed(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 6);
 

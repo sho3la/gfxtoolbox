@@ -157,10 +157,10 @@ namespace gfx
 			auto gfx = static_cast<GFX*>(glfwGetWindowUserPointer(window));
 			if (gfx)
 			{
+				glViewport(0, 0, width, height);
+
 				if (gfx->m_resizeCallback)
 					gfx->m_resizeCallback(width, height);
-
-				glViewport(0, 0, width, height);
 			}
 		};
 
@@ -669,6 +669,12 @@ namespace gfx
 	GFX::setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat)
 	{
 		glUniformMatrix4fv(glGetUniformLocation(gpu_program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+	}
+
+	void
+	GFX::setGPUProgramFloat(uint32_t gpu_program, const std::string& name, const float& val)
+	{
+		glUniform1f(glGetUniformLocation(gpu_program, name.c_str()), val);
 	}
 
 	void
