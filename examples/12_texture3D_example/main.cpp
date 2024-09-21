@@ -89,8 +89,7 @@ initVBO();
 void
 initShader();
 void initFrameBuffer(GLuint, GLuint, GLuint);
-GLuint
-initTFF1DTex(const char* filename);
+
 GLuint
 initFace2DTex(GLuint texWidth, GLuint texHeight);
 GLuint
@@ -105,7 +104,6 @@ init()
 	g_texHeight = g_winHeight;
 	initVBO();
 	initShader();
-	g_tffTexObj = initTFF1DTex(DATA_DIR "tff.dat");
 	g_bfTexObj = initFace2DTex(g_texWidth, g_texHeight);
 	g_volTexObj = initVol3DTex();
 	GL_ERROR();
@@ -267,46 +265,6 @@ createShaderPgm()
 	return programHandle;
 }
 
-// init the 1 dimentional texture for transfer function
-GLuint
-initTFF1DTex(const char* filename)
-{
-	// read in the user defined data of transfer function
-	ifstream inFile(filename, ifstream::in);
-	if (!inFile)
-	{
-		cerr << "Error openning file: " << filename << endl;
-		exit(EXIT_FAILURE);
-	}
-
-	const int MAX_CNT = 10000;
-	GLubyte* tff = (GLubyte*)calloc(MAX_CNT, sizeof(GLubyte));
-	inFile.read(reinterpret_cast<char*>(tff), MAX_CNT);
-	if (inFile.eof())
-	{
-		size_t bytecnt = inFile.gcount();
-		*(tff + bytecnt) = '\0';
-		cout << "bytecnt " << bytecnt << endl;
-	}
-	else if (inFile.fail())
-	{
-		cout << filename << "read failed " << endl;
-	}
-	else
-	{
-		cout << filename << "is too large" << endl;
-	}
-	GLuint tff1DTex;
-	glGenTextures(1, &tff1DTex);
-	glBindTexture(GL_TEXTURE_1D, tff1DTex);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, tff);
-	free(tff);
-	return tff1DTex;
-}
 // init the 2D texture for render backface 'bf' stands for backface
 GLuint
 initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
