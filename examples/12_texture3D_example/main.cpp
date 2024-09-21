@@ -19,6 +19,8 @@ int scrn_width = 800;
 int scrn_height = 600;
 std::shared_ptr<gfx::Framebuffer> frame_buffer;
 
+float mind = -1000, maxd = 20429;
+
 // create transformations
 glm::mat4 projection = glm::mat4(1.0f);
 
@@ -76,10 +78,11 @@ const char* fragmentShaderSource = R"(
 		out vec4 fragColor;
 
 		uniform sampler3D volume; // 3D texture containing DICOM intensity data
+		uniform float minIntensity; // Minimum intensity value
+		uniform float maxIntensity; // Maximum intensity value
 
 		const vec2 screenSize = vec2(800,600); // Size of the screen
-		const float minIntensity = -1000; // Minimum intensity value
-		const float maxIntensity = 20434; // Maximum intensity value
+
 
 		void main() {
 
@@ -87,20 +90,20 @@ const char* fragmentShaderSource = R"(
 			vec3 exitPoint = vec3(gl_FragCoord.st / screenSize, 0.0);
 
 			// Skip rendering if the entry and exit points are the same
-			if (entryPoint == exitPoint)
-				discard;
+			//if (entryPoint == exitPoint)
+			//	discard;
 
 			// Compute the direction from entry point to exit point
 			vec3 dir = exitPoint - entryPoint;
 			float len = length(dir);
 			vec3 dirN = normalize(dir);
-			vec3 deltaDir = dirN * 0.05; // Small step size
+			vec3 deltaDir = dirN * 0.1; // Small step size
 
 			vec3 voxelCoord = entryPoint; // Start at the entry point
 			vec4 colorAccum = vec4(0.0); // Accumulated color
 
 			// Sample along the ray for a fixed number of iterations
-			for (int i = 0; i < 1000; i++)
+			for (int i = 0; i < 2000; i++)
 			 {
 				// Sample the red channel from the 3D texture
 				float intensity = texture(volume, voxelCoord).r;
@@ -167,16 +170,23 @@ _init_framebuf()
 	frame_buffer = std::make_shared<gfx::Framebuffer>(scrn_width, scrn_height);
 }
 
-float min = FLT_MAX;
-float max = -FLT_MAX;
-auto read_img_file = [&](const char* filename) -> std::shared_ptr<gfx::Image3D> {
-	std::ifstream infile(filename);
+
+// init 3D texture to store the volume data used fo ray casting
+GLuint
+initVol3DTex()
+{
+	unsigned int g_volTexObj;
+	auto w = 0;
+	auto h = 0;
+	auto d = 0;
+
+	///////////////////////
+	std::ifstream infile(DATA_DIR "img_3d.txt");
 	if (!infile)
 	{
-		std::cerr << "Error opening file for reading: " << filename << std::endl;
+		std::cerr << "Error opening file for reading: " << DATA_DIR "img_3d.txt" << std::endl;
 	}
 
-	int width, height, depth;
 	std::string line;
 	std::getline(infile, line);
 
@@ -193,50 +203,19 @@ auto read_img_file = [&](const char* filename) -> std::shared_ptr<gfx::Image3D> 
 		}
 		words.push_back(line.substr(start)); // Add the last word
 
-		width = std::stof(words[0]);
-		height = std::stof(words[1]);
-		depth = std::stof(words[2]);
+		w = std::stof(words[0]);
+		h = std::stof(words[1]);
+		d = std::stof(words[2]);
 	}
 
-	auto image = std::make_shared<gfx::Image3D>(width, height, depth);
-
 	std::vector<float> data;
-	data.reserve(width* height* depth);
-
-
-	
 	while (std::getline(infile, line))
 	{
 		auto val = std::stof(line);
-		//std::cout << val << std::endl;
-		if (val > max)
-		{
-			max = val;
-		}
-
-		if (val < min)
-		{
-			min = val;
-		}
 		data.push_back(val);
 	}
 
 	infile.close();
-
-	image->setData(data);
-
-	return image;
-};
-
-// init 3D texture to store the volume data used fo ray casting
-GLuint
-initVol3DTex()
-{
-	unsigned int g_volTexObj;
-	auto img = read_img_file(DATA_DIR "img_3d.txt");
-	auto w = img->getWidth();
-	auto h = img->getHeight();
-	auto d = img->getDepth();
 
 	glGenTextures(1, &g_volTexObj);
 
@@ -247,12 +226,10 @@ initVol3DTex()
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	// pixel transfer happens here from client to OpenGL server
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	if (w > 0 && h > 0 && d > 0)
 	{
-		glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, w, h, d, 0, GL_RED, GL_FLOAT, img->getData().data());
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, w, h, d, 0, GL_RED, GL_FLOAT, data.data());
 		GLenum error = glGetError();
 		if (error != GL_NO_ERROR)
 		{
@@ -360,6 +337,9 @@ render_pass_1()
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
 	gfx_backend->clearBuffer();
 
+	ImGui::DragFloat("min", &mind);
+	ImGui::DragFloat("max", &maxd);
+
 	//glEnable(GL_CULL_FACE);
 	//glCullFace(GL_BACK);
 	//glFrontFace(GL_CCW);
@@ -378,6 +358,10 @@ render_pass_1()
 
 	gfx_backend->setGPUProgramMat4(gpu_program2, "model", model);
 	gfx_backend->setGPUProgramMat4(gpu_program2, "mvp", mvp);
+
+
+	gfx_backend->setGPUProgramFloat(gpu_program2, "minIntensity", mind);
+	gfx_backend->setGPUProgramFloat(gpu_program2, "maxIntensity", maxd);
 	
 
 	GLint volumeLoc = glGetUniformLocation(gpu_program2, "volume_texture");
