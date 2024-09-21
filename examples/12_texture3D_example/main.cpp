@@ -96,7 +96,7 @@ int scrn_height = 600;
 std::shared_ptr<gfx::Framebuffer> frame_buffer;
 
 float mind = -1000, maxd = 3094;
-float scalar = 0.05f;
+float scalar = 0.005f;
 
 // create transformations
 glm::mat4 projection = glm::mat4(1.0f);
@@ -136,6 +136,7 @@ const char* vertexShaderSource = R"(
 
 			// Uniforms
 			uniform  mat4 model;
+			uniform  mat4 view;
 			uniform  mat4 mvp;
 
 			void main()
@@ -166,7 +167,7 @@ const char* fragmentShaderSource = R"(
 			vec4 colorAccum = vec4(0.0); // Accumulated color
 
 			// Sample along the ray for a fixed number of iterations
-			for (int i = 0; i < 1000; i++)
+			for (int i = 0; i < 200; i++)
 			 {
 				// Sample the red channel from the 3D texture
 				float intensity = texture(volume, voxelCoord).r;
@@ -175,7 +176,7 @@ const char* fragmentShaderSource = R"(
 				float normalizedIntensity = (intensity - minIntensity) / (maxIntensity - minIntensity);
 				normalizedIntensity = clamp(normalizedIntensity, 0.0, 1.0); // Clamp to [0, 1]
 
-				float prev_alpha = normalizedIntensity * (1.0 - colorAccum.a) * 0.1;
+				float prev_alpha = normalizedIntensity * (1.0 - colorAccum.a);
 
 				// Accumulate color as grayscale
 				colorAccum += vec4(normalizedIntensity, normalizedIntensity, normalizedIntensity, prev_alpha);
@@ -183,6 +184,9 @@ const char* fragmentShaderSource = R"(
 
 				// Move to the next voxel along the ray
 				voxelCoord += ray_step;
+
+				 if (colorAccum.a > 0.99)
+					break;
 
 			}
 
@@ -401,7 +405,7 @@ render_pass_1()
 	ImGui::DragFloat("max", &maxd);
 
 	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
+	//glCullFace(GL_FRONT);
 	//glFrontFace(GL_CCW);
 	//glDisable(GL_SCISSOR_TEST);
 	//glDepthFunc(GL_LESS);
@@ -416,6 +420,7 @@ render_pass_1()
 	auto mvp = projection * view * model;
 
 	gfx_backend->setGPUProgramMat4(gpu_program2, "model", model);
+	gfx_backend->setGPUProgramMat4(gpu_program2, "view", view);
 	gfx_backend->setGPUProgramMat4(gpu_program2, "mvp", mvp);
 
 
