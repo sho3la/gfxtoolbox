@@ -19,7 +19,7 @@ int scrn_width = 800;
 int scrn_height = 600;
 std::shared_ptr<gfx::Framebuffer> frame_buffer;
 
-float mind = -1000, maxd = 20429;
+float mind = -1000, maxd = 3094;
 
 // create transformations
 glm::mat4 projection = glm::mat4(1.0f);
@@ -81,6 +81,8 @@ const char* fragmentShaderSource = R"(
 		uniform float minIntensity; // Minimum intensity value
 		uniform float maxIntensity; // Maximum intensity value
 
+		uniform vec3 ray_step; // Maximum intensity value
+
 		const vec2 screenSize = vec2(800,600); // Size of the screen
 
 
@@ -90,20 +92,18 @@ const char* fragmentShaderSource = R"(
 			vec3 exitPoint = vec3(gl_FragCoord.st / screenSize, 0.0);
 
 			// Skip rendering if the entry and exit points are the same
-			//if (entryPoint == exitPoint)
-			//	discard;
+			if (entryPoint == exitPoint)
+				discard;
 
 			// Compute the direction from entry point to exit point
 			vec3 dir = exitPoint - entryPoint;
 			float len = length(dir);
-			vec3 dirN = normalize(dir);
-			vec3 deltaDir = dirN * 0.1; // Small step size
 
 			vec3 voxelCoord = entryPoint; // Start at the entry point
 			vec4 colorAccum = vec4(0.0); // Accumulated color
 
 			// Sample along the ray for a fixed number of iterations
-			for (int i = 0; i < 2000; i++)
+			for (int i = 0; i < 200; i++)
 			 {
 				// Sample the red channel from the 3D texture
 				float intensity = texture(volume, voxelCoord).r;
@@ -119,7 +119,7 @@ const char* fragmentShaderSource = R"(
 				colorAccum.a += prev_alpha;
 
 				// Move to the next voxel along the ray
-				voxelCoord += deltaDir;
+				voxelCoord += ray_step;
 
 				// Stop if we've reached the exit point
 				if (length(voxelCoord - entryPoint) >= len) {
@@ -351,7 +351,7 @@ render_pass_1()
 	glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 	glm::mat4 view = glm::mat4(1.0f);
 
-	model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+	//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
 	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
 	auto mvp = projection * view * model;
@@ -362,7 +362,16 @@ render_pass_1()
 
 	gfx_backend->setGPUProgramFloat(gpu_program2, "minIntensity", mind);
 	gfx_backend->setGPUProgramFloat(gpu_program2, "maxIntensity", maxd);
+
+	float scalar = 0.15f;
+	glm::vec4 voxel_size(0.0123152705, 0.0123152705, 0.0103734434, 1);
+	auto slow_ray_step = glm::inverse(model) * glm::vec4(0,0,1,1) * voxel_size * scalar;
 	
+	glUniform3fv(
+		glGetUniformLocation(gpu_program2, "ray_step"),
+		1,
+		glm::value_ptr(glm::vec3(slow_ray_step.x, slow_ray_step.y, slow_ray_step.z)));
+
 
 	GLint volumeLoc = glGetUniformLocation(gpu_program2, "volume_texture");
 	glActiveTexture(GL_TEXTURE0);
