@@ -593,8 +593,6 @@ void
 render_pass_1()
 {
 	frame_buffer->Bind();
-	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
-	gfx_backend->clearBuffer();
 
 	glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 	glm::mat4 view = glm::mat4(1.0f);
@@ -604,15 +602,21 @@ render_pass_1()
 
 	auto mvp = projection * view * model;
 
-	//gfx_backend->bindGPUProgram(gpu_program2);
-	//gfx_backend->setGPUProgramMat4(gpu_program2, "mvp", mvp);
-	//gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id2, 36);
+	gfx_backend->bindGPUProgram(gpu_program2);
+	gfx_backend->setGPUProgramMat4(gpu_program2, "mvp", mvp);
+	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id2, 36);
 
-	/// raycast call
+	frame_buffer->Unbind();
+
+		/// raycast call
+
+	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
+	gfx_backend->clearBuffer();
 
 	gfx_backend->bindGPUProgram(gpu_program3);
 	gfx_backend->setGPUProgramMat4(gpu_program3, "mvp", mvp);
 	gfx_backend->setGPUProgramMat4(gpu_program3, "viewMat", view);
+	glUniform2f(glGetUniformLocation(gpu_program3, "screenSize"), scrn_width, scrn_height);
 
 	glm::mat4 combinedMatrix = view * model;
 	glm::mat4 invertedMatrix = glm::inverse(combinedMatrix);
@@ -635,13 +639,10 @@ render_pass_1()
 	gfx_backend->bindTexture3D(gradient3d);
 	glUniform1i(glGetUniformLocation(gpu_program3, "gradients"), 3);
 
-
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id2, 36);
 	glDisable(GL_CULL_FACE);
-
-	frame_buffer->Unbind();
 }
 
 void
@@ -649,15 +650,6 @@ render()
 {
 	// render to frame buffer
 	render_pass_1();
-
-	// render to main buffer
-	gfx_backend->setClearColor(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-	gfx_backend->clearBuffer();
-
-	gfx_backend->bindTexture2D(frame_buffer->GetTexture());
-	gfx_backend->bindGPUProgram(gpu_program);
-
-	gfx_backend->draw_indexed(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 6);
 }
 
 int
