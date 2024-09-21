@@ -322,173 +322,6 @@ initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
 	return backFace2DTex;
 }
 
-auto read_img_file = [&](const char* filename) -> std::shared_ptr<gfx::Image3D> {
-	std::ifstream infile(filename);
-	if (!infile)
-	{
-		std::cerr << "Error opening file for reading: " << filename << std::endl;
-	}
-
-	int width, height, depth;
-	std::string line;
-	std::getline(infile, line);
-
-	// split first line to 3 dimension by space.
-	{
-		std::vector<std::string> words;
-		std::string::size_type start = 0;
-		std::string::size_type end = 0;
-
-		while ((end = line.find(' ', start)) != std::string::npos)
-		{
-			words.push_back(line.substr(start, end - start));
-			start = end + 1;
-		}
-		words.push_back(line.substr(start)); // Add the last word
-
-		width = std::stof(words[0]);
-		height = std::stof(words[1]);
-		depth = std::stof(words[2]);
-	}
-
-	auto image = std::make_shared<gfx::Image3D>(width, height, depth);
-
-	std::vector<float> data;
-	while (std::getline(infile, line))
-	{
-		data.push_back(std::stof(line));
-	}
-
-	infile.close();
-
-	image->setData(data);
-
-	return image;
-};
-
-// std::vector<unsigned char>
-// Generate3DTextureData(int width, int height, int depth)
-//{
-//	std::vector<unsigned char> data(width * height * depth);
-//	for (int z = 0; z < depth; ++z)
-//	{
-//		for (int y = 0; y < height; ++y)
-//		{
-//			for (int x = 0; x < width; ++x)
-//			{
-//				// Simple checkerboard pattern
-//				int color = ((x / 10 + y / 10 + z / 10) % 2) * 255; // 0 or 255
-//				data[(z * height * width) + (y * width) + x] = color;
-//			}
-//		}
-//	}
-//	return data;
-// }
-
-//// Simple noise function (placeholder; replace with a more complex noise algorithm for better clouds)
-// float
-// SimpleNoise(float x, float y, float z)
-//{
-//	return (sin(x * 5.0f) + cos(y * 5.0f) + sin(z * 5.0f)) * 0.5f + 0.5f; // Range [0, 1]
-// }
-//
-// std::vector<unsigned char>
-// GenerateCloudTextureData(int width, int height, int depth)
-//{
-//	std::vector<unsigned char> data(width * height * depth);
-//
-//	for (int z = 0; z < depth; ++z)
-//	{
-//		for (int y = 0; y < height; ++y)
-//		{
-//			for (int x = 0; x < width; ++x)
-//			{
-//				float nx = static_cast<float>(x) / width;
-//				float ny = static_cast<float>(y) / height;
-//				float nz = static_cast<float>(z) / depth;
-//
-//				// Generate noise value
-//				float noise = SimpleNoise(nx, ny, nz);
-//
-//				// Convert noise value to a color value (0-255)
-//				data[(z * height * width) + (y * width) + x] = static_cast<unsigned char>(noise * 255);
-//			}
-//		}
-//	}
-//	return data;
-// }
-
-// Simple noise function (you might want to replace this with a real noise function)
-// float
-// SimpleNoise(float x, float y, float z)
-//{
-//	return (sin(x * 10.0f) * 0.5f + cos(y * 10.0f) * 0.5f + sin(z * 10.0f) * 0.5f + 1.0f) * 0.5f; // Range [0, 1]
-//}
-//
-// std::vector<unsigned char>
-// GenerateSkyCloudTextureData(int width, int height, int depth)
-//{
-//	std::vector<unsigned char> data(width * height * depth);
-//
-//	for (int z = 0; z < depth; ++z)
-//	{
-//		for (int y = 0; y < height; ++y)
-//		{
-//			for (int x = 0; x < width; ++x)
-//			{
-//				float nx = static_cast<float>(x) / width;
-//				float ny = static_cast<float>(y) / height;
-//				float nz = static_cast<float>(z) / depth;
-//
-//				// Generate noise value for cloud-like appearance
-//				float noise = SimpleNoise(nx, ny, nz);
-//
-//				// Convert noise value to a color value (0-255)
-//				data[(z * height * width) + (y * width) + x] = static_cast<unsigned char>(noise * 255);
-//			}
-//		}
-//	}
-//	return data;
-//}
-
-//// Simple noise function for smoke (replace with a better noise function for improved results)
-// float
-// SimpleNoise(float x, float y, float z)
-//{
-//	return (sin(x * 10.0f) * 0.5f + cos(y * 10.0f) * 0.5f + sin(z * 10.0f) * 0.5f + 1.0f) * 0.5f; // Range [0, 1]
-// }
-//
-// std::vector<float>
-// GenerateSmokeTextureData(int width, int height, int depth)
-//{
-//	std::vector<float> data(width * height * depth);
-//
-//	for (int z = 0; z < depth; ++z)
-//	{
-//		for (int y = 0; y < height; ++y)
-//		{
-//			for (int x = 0; x < width; ++x)
-//			{
-//				float nx = static_cast<float>(x) / width;
-//				float ny = static_cast<float>(y) / height;
-//				float nz = static_cast<float>(z) / depth;
-//
-//				// Generate noise value
-//				float noise = SimpleNoise(nx, ny, nz);
-//
-//				// Create a softer effect for smoke
-//				// Use a non-linear function to simulate more transparency
-//				float smokeValue = pow(noise, 2.5f); // Adjust power for softness
-//
-//				// Convert smoke value to a color value (0-255)
-//				data[(z * height * width) + (y * width) + x] = static_cast<float>(smokeValue * 255);
-//			}
-//		}
-//	}
-//	return data;
-// }
-
-// init 3D texture to store the volume data used fo ray casting
 // init 3D texture to store the volume data used fo ray casting
 GLuint
 initVol3DTex()
@@ -505,31 +338,20 @@ initVol3DTex()
 		std::cerr << "Error opening file for reading: " << DATA_DIR "img_3d.txt" << std::endl;
 	}
 
-	std::string line;
-	std::getline(infile, line);
-
-	// split first line to 3 dimension by space.
+	// Read the first line and directly parse the dimensions
+	if (!(infile >> w >> h >> d))
 	{
-		std::vector<std::string> words;
-		std::string::size_type start = 0;
-		std::string::size_type end = 0;
-
-		while ((end = line.find(' ', start)) != std::string::npos)
-		{
-			words.push_back(line.substr(start, end - start));
-			start = end + 1;
-		}
-		words.push_back(line.substr(start)); // Add the last word
-
-		w = std::stof(words[0]);
-		h = std::stof(words[1]);
-		d = std::stof(words[2]);
+		std::cerr << "Error reading dimensions from file: " << DATA_DIR "img_3d.txt" << std::endl;
+		return -1;
 	}
 
 	std::vector<float> data;
-	while (std::getline(infile, line))
+	data.reserve(w * h * d);
+	
+	// Read the remaining lines into the vector
+	float val;
+	while (infile >> val)
 	{
-		auto val = std::stof(line);
 		data.push_back(val);
 	}
 
