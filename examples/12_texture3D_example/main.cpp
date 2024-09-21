@@ -1,239 +1,494 @@
-﻿#include <iostream>
+﻿
+#include <GL/glew.h>
 
-#include "gfx.h"
-#include "gfx_fbo.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/transform2.hpp>
 
-#include <imgui.h>
-
-#include <iostream>
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 
-struct OrbitalCamera
-{
-	OrbitalCamera(float distance, float azimuth, float elevation)
-		: distance(distance), azimuth(azimuth), elevation(elevation), target(glm::vec3(0.0f, 0.0f, 0.0f))
-	{
-	}
-
-	glm::mat4
-	getViewMatrix()
-	{
-		// Convert spherical coordinates to Cartesian coordinates
-		float x = distance * cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
-		float y = distance * sin(glm::radians(elevation));
-		float z = distance * cos(glm::radians(elevation)) * sin(glm::radians(azimuth));
-
-		// Create the camera position
-		glm::vec3 cameraPosition(x, y, z);
-
-		// The view matrix is the inverse of the look-at matrix
-		return glm::lookAt(cameraPosition, target, glm::vec3(0, 1, 0));
-	}
-
-	glm::vec3
-	getForwardVector()
-	{
-		float x = cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
-		float y = sin(glm::radians(elevation));
-		float z = cos(glm::radians(elevation)) * sin(glm::radians(azimuth));
-
-		// Create the camera position
-		glm::vec3 cameraPosition(x, y, z);
-
-		// Normalize the forward vector
-		glm::vec3 forward = glm::normalize(cameraPosition - target);
-
-		return forward;
-	}
-
-	void
-	zoom(float yoffset)
-	{
-		distance = distance - (float)yoffset * zoomSpeed;
-	}
-
-	void
-	rotate(float xpos, float ypos)
-	{
-		float xoffset = xpos - start_pos.x;
-		float yoffset = ypos - start_pos.y;
-		start_pos = glm::vec2(xpos, ypos);
-
-		xoffset *= rot_sensitivity;
-		yoffset *= rot_sensitivity;
-
-		azimuth = azimuth + xoffset;
-		elevation = elevation + yoffset;
-
-		// clamp to range [-90, 90] around the horizontal axis
-		elevation = glm::clamp(elevation, -90.0f, 90.0f);
-	}
-
-	float distance;	 // Distance from the target
-	float azimuth;	 // Rotation around the vertical axis (in degrees)
-	float elevation; // Rotation around the horizontal axis (in degrees)
-
-	glm::vec3 target; // point to look at
-
-	float zoomSpeed = 1.0f;
-	float rot_sensitivity = 0.5f;
-
-	bool is_draging = false;
-	glm::vec2 start_pos;
-};
-
-OrbitalCamera camera(10.0f, -0.1f, 42.0f);
-
+#include <gfx.h>
 // global
 auto gfx_backend = std::make_shared<gfx::GFX>();
 
-uint32_t vertex_buffer_id, index_buffer_id, gpu_mesh_id, gpu_program;
+#define GL_ERROR() checkForOpenGLError(__FILE__, __LINE__)
+using namespace std;
 
-uint32_t vertex_buffer_id2, index_buffer_id2, gpu_mesh_id2, gpu_program2;
+using glm::mat4;
+using glm::vec3;
+GLuint g_vao;
+GLuint g_programHandle;
+GLuint g_winWidth = 1100;
+GLuint g_winHeight = 900;
+float g_angle = 0;
+GLuint g_frameBuffer;
 
-int scrn_width = 800;
-int scrn_height = 600;
-std::shared_ptr<gfx::Framebuffer> frame_buffer;
+// transfer function
+GLuint g_tffTexObj;
+GLuint g_bfTexObj;
+GLuint g_texWidth;
+GLuint g_texHeight;
+GLuint g_volTexObj;
+GLuint g_rcVertHandle;
+GLuint g_rcFragHandle;
+GLuint g_bfVertHandle;
+GLuint g_bfFragHandle;
+float g_stepSize = 0.001f;
 
-float mind = -1000, maxd = 3094;
-float scalar = 0.005f;
+int
+checkForOpenGLError(const char* file, int line)
+{
+	// return 1 if an OpenGL error occured, 0 otherwise.
+	GLenum glErr;
+	int retCode = 0;
+
+	glErr = glGetError();
+	while (glErr != GL_NO_ERROR)
+	{
+		cout << "glError " << line << glewGetErrorString(glErr) << endl;
+		retCode = 1;
+		exit(EXIT_FAILURE);
+	}
+	return retCode;
+}
+
+std::string
+GlErrorToString(GLenum error)
+{
+	switch (error)
+	{
+	case GL_NO_ERROR:
+		return "No error.";
+	case GL_INVALID_ENUM:
+		return "Error: Invalid enum value.";
+	case GL_INVALID_VALUE:
+		return "Error: Invalid value.";
+	case GL_INVALID_OPERATION:
+		return "Error: Invalid operation.";
+	case GL_OUT_OF_MEMORY:
+		return "Error: Out of memory.";
+	case GL_INVALID_FRAMEBUFFER_OPERATION:
+		return "Error: Invalid framebuffer operation.";
+	default:
+		return "Error: Unknown error.";
+	}
+}
 
 // create transformations
 glm::mat4 projection = glm::mat4(1.0f);
 
-unsigned int tex3d;
-
-const char* vertexShader = R"(
-		#version 450 core
-		layout (location = 0) in vec3 aPos;
-		layout (location = 1) in vec2 aTexCoords;
-
-		out vec2 TexCoords;
-
-		void main()
-		{
-			TexCoords = aTexCoords;
-			gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
-		})";
-
-const char* fragmentShader = R"(
-		#version 450 core
-		out vec4 FragColor;
-		in vec2 TexCoords;
-		uniform sampler2D screenTexture;
-		void main()
-		{
-			vec3 col = texture(screenTexture, TexCoords).rgb;
-			FragColor = vec4(col, 1.0);
-		})";
-
-// Vertex Shader Source
-const char* vertexShaderSource = R"(
-			#version 450
-
-			in vec3 input_position;
-			out vec3 entryPoint;
-
-			// Uniforms
-			uniform  mat4 model;
-			uniform  mat4 view;
-			uniform  mat4 mvp;
-
-			void main()
-			{
-				vec4 cs_position = mvp * vec4(input_position, 1.0);
-				vec3 uv = input_position + vec3(0.5,0.5,0.5);
-
-				gl_Position = cs_position;
-				entryPoint = uv; // Pass the entry point
-			})";
-
-// Fragment Shader Source
-const char* fragmentShaderSource = R"(
-		#version 450
-
-		in vec3 entryPoint;
-		out vec4 fragColor;
-
-		uniform sampler3D volume; // 3D texture containing DICOM intensity data
-		uniform float minIntensity; // Minimum intensity value
-		uniform float maxIntensity; // Maximum intensity value
-
-		uniform vec3 ray_step; // Maximum intensity value
-
-		void main() {
-
-			vec3 voxelCoord = entryPoint; // Start at the entry point
-			vec4 colorAccum = vec4(0.0); // Accumulated color
-
-			// Sample along the ray for a fixed number of iterations
-			for (int i = 0; i < 200; i++)
-			 {
-				// Sample the red channel from the 3D texture
-				float intensity = texture(volume, voxelCoord).r;
-
-				// Normalize the intensity
-				float normalizedIntensity = (intensity - minIntensity) / (maxIntensity - minIntensity);
-				normalizedIntensity = clamp(normalizedIntensity, 0.0, 1.0); // Clamp to [0, 1]
-
-				float prev_alpha = normalizedIntensity * (1.0 - colorAccum.a);
-
-				// Accumulate color as grayscale
-				colorAccum += vec4(normalizedIntensity, normalizedIntensity, normalizedIntensity, prev_alpha);
-				colorAccum.a += prev_alpha;
-
-				// Move to the next voxel along the ray
-				voxelCoord += ray_step;
-
-				 if (colorAccum.a > 0.99)
-					break;
-
-			}
-
-			// Finalize the color output
-			fragColor = colorAccum;
-
-		}
-
-
-)";
-
-inline static void
-_init_framebuf()
+void
+display(void);
+void
+initVBO();
+void
+initShader();
+void initFrameBuffer(GLuint, GLuint, GLuint);
+GLuint
+initTFF1DTex(const char* filename);
+GLuint
+initFace2DTex(GLuint texWidth, GLuint texHeight);
+GLuint
+initVol3DTex();
+void
+render(GLenum cullFace);
+void
+init()
 {
-	// clang-format off
-	float vertices[] = {
-		// positions      // texture coords
-		 1.0f,  1.0f, 0.0f,  1.0f, 0.0f, // top right
-		 1.0f, -1.0f, 0.0f,  1.0f, 1.0f, // bottom right
-		-1.0f, -1.0f, 0.0f,  0.0f, 1.0f, // bottom left
-		-1.0f,  1.0f, 0.0f,  0.0f, 0.0f  // top left 
-	};
+	GL_ERROR();
+	g_texWidth = g_winWidth;
+	g_texHeight = g_winHeight;
+	initVBO();
+	initShader();
+	g_tffTexObj = initTFF1DTex(DATA_DIR "tff.dat");
+	g_bfTexObj = initFace2DTex(g_texWidth, g_texHeight);
+	g_volTexObj = initVol3DTex();
+	GL_ERROR();
+	initFrameBuffer(g_bfTexObj, g_texWidth, g_texHeight);
+	GL_ERROR();
 
-	unsigned int indices[] = {
-		0, 1, 3, // first triangle
-		1, 2, 3  // second triangle
-	};
+	projection = glm::perspective(glm::radians(45.0f), (float)g_winWidth / (float)g_winHeight, 0.1f, 100.0f);
+}
+// init the vertex buffer object
+void
+initVBO()
+{
+	GLfloat vertices[24] = {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
+							1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0};
+	// draw the six faces of the boundbox by drawwing triangles
+	// draw it contra-clockwise
+	// front: 1 5 7 3
+	// back: 0 2 6 4
+	// left：0 1 3 2
+	// right:7 5 4 6
+	// up: 2 3 7 6
+	// down: 1 0 4 5
+	GLuint indices[36] = {1, 5, 7, 7, 3, 1, 0, 2, 6, 6, 4, 0, 0, 1, 3, 3, 2, 0,
+						  7, 5, 4, 4, 6, 7, 2, 3, 7, 7, 6, 2, 1, 0, 4, 4, 5, 1};
+	GLuint gbo[2];
 
-	// clang-format on
+	glGenBuffers(2, gbo);
+	GLuint vertexdat = gbo[0];
+	GLuint veridxdat = gbo[1];
+	glBindBuffer(GL_ARRAY_BUFFER, vertexdat);
+	glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+	// used in glDrawElement()
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, veridxdat);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
-	vertex_buffer_id = gfx_backend->createVertexBuffer(vertices, sizeof(vertices), gfx::BUFFER_USAGE::STATIC);
-	index_buffer_id = gfx_backend->createVertexBuffer(indices, sizeof(indices), gfx::BUFFER_USAGE::STATIC);
+	GLuint vao;
+	glGenVertexArrays(1, &vao);
+	// vao like a closure binding 3 buffer object: verlocdat vercoldat and veridxdat
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0); // for vertexloc
+	glEnableVertexAttribArray(1); // for vertexcol
 
-	gfx::Attributes attributes;
-	attributes.append(gfx::GPU_Attribute(gfx::GPU_Attribute::VEC3, "POSITION"));
-	attributes.append(gfx::GPU_Attribute(gfx::GPU_Attribute::VEC2, "TEXCOORD"));
+	// the vertex location is the same as the vertex color
+	glBindBuffer(GL_ARRAY_BUFFER, vertexdat);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLfloat*)NULL);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLfloat*)NULL);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, veridxdat);
+	// glBindVertexArray(0);
+	g_vao = vao;
+}
+void
+drawBox(GLenum glFaces)
+{
+	glEnable(GL_CULL_FACE);
+	glCullFace(glFaces);
+	glBindVertexArray(g_vao);
+	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, (GLuint*)NULL);
+	glDisable(GL_CULL_FACE);
+}
+// check the compilation result
+GLboolean
+compileCheck(GLuint shader)
+{
+	GLint err;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &err);
+	if (GL_FALSE == err)
+	{
+		GLint logLen;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+		if (logLen > 0)
+		{
+			char* log = (char*)malloc(logLen);
+			GLsizei written;
+			glGetShaderInfoLog(shader, logLen, &written, log);
+			cerr << "Shader log: " << log << endl;
+			free(log);
+		}
+	}
+	return err;
+}
+// init shader object
+GLuint
+initShaderObj(const GLchar* srcfile, GLenum shaderType)
+{
+	ifstream inFile(srcfile, ifstream::in);
+	// use assert?
+	if (!inFile)
+	{
+		cerr << "Error openning file: " << srcfile << endl;
+		exit(EXIT_FAILURE);
+	}
 
-	gpu_mesh_id = gfx_backend->createGPUMesh(vertex_buffer_id, index_buffer_id, attributes);
+	const int MAX_CNT = 10000;
+	GLchar* shaderCode = (GLchar*)calloc(MAX_CNT, sizeof(GLchar));
+	inFile.read(shaderCode, MAX_CNT);
+	if (inFile.eof())
+	{
+		size_t bytecnt = inFile.gcount();
+		*(shaderCode + bytecnt) = '\0';
+	}
+	else if (inFile.fail())
+	{
+		cout << srcfile << "read failed " << endl;
+	}
+	else
+	{
+		cout << srcfile << "is too large" << endl;
+	}
+	// create the shader Object
+	GLuint shader = glCreateShader(shaderType);
+	if (0 == shader)
+	{
+		cerr << "Error creating vertex shader." << endl;
+	}
+	// cout << shaderCode << endl;
+	// cout << endl;
+	const GLchar* codeArray[] = {shaderCode};
+	glShaderSource(shader, 1, codeArray, NULL);
+	free(shaderCode);
 
-	// build and compile our shader program
-	gpu_program = gfx_backend->createGPUProgram(vertexShader, fragmentShader);
-
-	// create another render buffer to render on it.
-	frame_buffer = std::make_shared<gfx::Framebuffer>(scrn_width, scrn_height);
+	// compile the shader
+	glCompileShader(shader);
+	if (GL_FALSE == compileCheck(shader))
+	{
+		cerr << "shader compilation failed" << endl;
+	}
+	return shader;
+}
+GLint
+checkShaderLinkStatus(GLuint pgmHandle)
+{
+	GLint status;
+	glGetProgramiv(pgmHandle, GL_LINK_STATUS, &status);
+	if (GL_FALSE == status)
+	{
+		GLint logLen;
+		glGetProgramiv(pgmHandle, GL_INFO_LOG_LENGTH, &logLen);
+		if (logLen > 0)
+		{
+			GLchar* log = (GLchar*)malloc(logLen);
+			GLsizei written;
+			glGetProgramInfoLog(pgmHandle, logLen, &written, log);
+			cerr << "Program log: " << log << endl;
+		}
+	}
+	return status;
+}
+// link shader program
+GLuint
+createShaderPgm()
+{
+	// Create the shader program
+	GLuint programHandle = glCreateProgram();
+	if (0 == programHandle)
+	{
+		cerr << "Error create shader program" << endl;
+		exit(EXIT_FAILURE);
+	}
+	return programHandle;
 }
 
+// init the 1 dimentional texture for transfer function
+GLuint
+initTFF1DTex(const char* filename)
+{
+	// read in the user defined data of transfer function
+	ifstream inFile(filename, ifstream::in);
+	if (!inFile)
+	{
+		cerr << "Error openning file: " << filename << endl;
+		exit(EXIT_FAILURE);
+	}
 
+	const int MAX_CNT = 10000;
+	GLubyte* tff = (GLubyte*)calloc(MAX_CNT, sizeof(GLubyte));
+	inFile.read(reinterpret_cast<char*>(tff), MAX_CNT);
+	if (inFile.eof())
+	{
+		size_t bytecnt = inFile.gcount();
+		*(tff + bytecnt) = '\0';
+		cout << "bytecnt " << bytecnt << endl;
+	}
+	else if (inFile.fail())
+	{
+		cout << filename << "read failed " << endl;
+	}
+	else
+	{
+		cout << filename << "is too large" << endl;
+	}
+	GLuint tff1DTex;
+	glGenTextures(1, &tff1DTex);
+	glBindTexture(GL_TEXTURE_1D, tff1DTex);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA8, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, tff);
+	free(tff);
+	return tff1DTex;
+}
+// init the 2D texture for render backface 'bf' stands for backface
+GLuint
+initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
+{
+	GLuint backFace2DTex;
+	glGenTextures(1, &backFace2DTex);
+	glBindTexture(GL_TEXTURE_2D, backFace2DTex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, bfTexWidth, bfTexHeight, 0, GL_RGBA, GL_FLOAT, NULL);
+	return backFace2DTex;
+}
+
+auto read_img_file = [&](const char* filename) -> std::shared_ptr<gfx::Image3D> {
+	std::ifstream infile(filename);
+	if (!infile)
+	{
+		std::cerr << "Error opening file for reading: " << filename << std::endl;
+	}
+
+	int width, height, depth;
+	std::string line;
+	std::getline(infile, line);
+
+	// split first line to 3 dimension by space.
+	{
+		std::vector<std::string> words;
+		std::string::size_type start = 0;
+		std::string::size_type end = 0;
+
+		while ((end = line.find(' ', start)) != std::string::npos)
+		{
+			words.push_back(line.substr(start, end - start));
+			start = end + 1;
+		}
+		words.push_back(line.substr(start)); // Add the last word
+
+		width = std::stof(words[0]);
+		height = std::stof(words[1]);
+		depth = std::stof(words[2]);
+	}
+
+	auto image = std::make_shared<gfx::Image3D>(width, height, depth);
+
+	std::vector<float> data;
+	while (std::getline(infile, line))
+	{
+		data.push_back(std::stof(line));
+	}
+
+	infile.close();
+
+	image->setData(data);
+
+	return image;
+};
+
+// std::vector<unsigned char>
+// Generate3DTextureData(int width, int height, int depth)
+//{
+//	std::vector<unsigned char> data(width * height * depth);
+//	for (int z = 0; z < depth; ++z)
+//	{
+//		for (int y = 0; y < height; ++y)
+//		{
+//			for (int x = 0; x < width; ++x)
+//			{
+//				// Simple checkerboard pattern
+//				int color = ((x / 10 + y / 10 + z / 10) % 2) * 255; // 0 or 255
+//				data[(z * height * width) + (y * width) + x] = color;
+//			}
+//		}
+//	}
+//	return data;
+// }
+
+//// Simple noise function (placeholder; replace with a more complex noise algorithm for better clouds)
+// float
+// SimpleNoise(float x, float y, float z)
+//{
+//	return (sin(x * 5.0f) + cos(y * 5.0f) + sin(z * 5.0f)) * 0.5f + 0.5f; // Range [0, 1]
+// }
+//
+// std::vector<unsigned char>
+// GenerateCloudTextureData(int width, int height, int depth)
+//{
+//	std::vector<unsigned char> data(width * height * depth);
+//
+//	for (int z = 0; z < depth; ++z)
+//	{
+//		for (int y = 0; y < height; ++y)
+//		{
+//			for (int x = 0; x < width; ++x)
+//			{
+//				float nx = static_cast<float>(x) / width;
+//				float ny = static_cast<float>(y) / height;
+//				float nz = static_cast<float>(z) / depth;
+//
+//				// Generate noise value
+//				float noise = SimpleNoise(nx, ny, nz);
+//
+//				// Convert noise value to a color value (0-255)
+//				data[(z * height * width) + (y * width) + x] = static_cast<unsigned char>(noise * 255);
+//			}
+//		}
+//	}
+//	return data;
+// }
+
+// Simple noise function (you might want to replace this with a real noise function)
+// float
+// SimpleNoise(float x, float y, float z)
+//{
+//	return (sin(x * 10.0f) * 0.5f + cos(y * 10.0f) * 0.5f + sin(z * 10.0f) * 0.5f + 1.0f) * 0.5f; // Range [0, 1]
+//}
+//
+// std::vector<unsigned char>
+// GenerateSkyCloudTextureData(int width, int height, int depth)
+//{
+//	std::vector<unsigned char> data(width * height * depth);
+//
+//	for (int z = 0; z < depth; ++z)
+//	{
+//		for (int y = 0; y < height; ++y)
+//		{
+//			for (int x = 0; x < width; ++x)
+//			{
+//				float nx = static_cast<float>(x) / width;
+//				float ny = static_cast<float>(y) / height;
+//				float nz = static_cast<float>(z) / depth;
+//
+//				// Generate noise value for cloud-like appearance
+//				float noise = SimpleNoise(nx, ny, nz);
+//
+//				// Convert noise value to a color value (0-255)
+//				data[(z * height * width) + (y * width) + x] = static_cast<unsigned char>(noise * 255);
+//			}
+//		}
+//	}
+//	return data;
+//}
+
+//// Simple noise function for smoke (replace with a better noise function for improved results)
+// float
+// SimpleNoise(float x, float y, float z)
+//{
+//	return (sin(x * 10.0f) * 0.5f + cos(y * 10.0f) * 0.5f + sin(z * 10.0f) * 0.5f + 1.0f) * 0.5f; // Range [0, 1]
+// }
+//
+// std::vector<float>
+// GenerateSmokeTextureData(int width, int height, int depth)
+//{
+//	std::vector<float> data(width * height * depth);
+//
+//	for (int z = 0; z < depth; ++z)
+//	{
+//		for (int y = 0; y < height; ++y)
+//		{
+//			for (int x = 0; x < width; ++x)
+//			{
+//				float nx = static_cast<float>(x) / width;
+//				float ny = static_cast<float>(y) / height;
+//				float nz = static_cast<float>(z) / depth;
+//
+//				// Generate noise value
+//				float noise = SimpleNoise(nx, ny, nz);
+//
+//				// Create a softer effect for smoke
+//				// Use a non-linear function to simulate more transparency
+//				float smokeValue = pow(noise, 2.5f); // Adjust power for softness
+//
+//				// Convert smoke value to a color value (0-255)
+//				data[(z * height * width) + (y * width) + x] = static_cast<float>(smokeValue * 255);
+//			}
+//		}
+//	}
+//	return data;
+// }
+
+// init 3D texture to store the volume data used fo ray casting
 // init 3D texture to store the volume data used fo ray casting
 GLuint
 initVol3DTex()
@@ -296,7 +551,7 @@ initVol3DTex()
 		GLenum error = glGetError();
 		if (error != GL_NO_ERROR)
 		{
-			//std::cout << "OpenGL Error: " << GlErrorToString(error) << std::endl;
+			// std::cout << "OpenGL Error: " << GlErrorToString(error) << std::endl;
 		}
 	}
 	else
@@ -304,208 +559,245 @@ initVol3DTex()
 		std::cout << "Invalid texture dimensions: w=" << w << ", h=" << h << ", d=" << d << std::endl;
 	}
 
-	
 	return g_volTexObj;
 }
 
 void
-init()
+checkFramebufferStatus()
 {
+	GLenum complete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (complete != GL_FRAMEBUFFER_COMPLETE)
+	{
+		cout << "framebuffer is not complete" << endl;
+		exit(EXIT_FAILURE);
+	}
+}
+// init the framebuffer, the only framebuffer used in this program
+void
+initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
+{
+	// create a depth buffer for our framebuffer
+	GLuint depthBuffer;
+	glGenRenderbuffers(1, &depthBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
 
-	_init_framebuf();
-
-
-		// clang-format off
-
-	float vertices[] = {
-
-		// positions        
-		-0.5f, -0.5f, -0.5f,
-		0.5f, -0.5f, -0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		-0.5f,  0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-
-		-0.5f, -0.5f,  0.5f,
-		0.5f, -0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		-0.5f,  0.5f,  0.5f,
-		-0.5f, -0.5f,  0.5f,
-
-		-0.5f,  0.5f,  0.5f,
-		-0.5f,  0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-		-0.5f, -0.5f, -0.5f,
-		-0.5f, -0.5f,  0.5f,
-		-0.5f,  0.5f,  0.5f,
-
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f, -0.5f, 
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-
-		-0.5f, -0.5f, -0.5f,
-		0.5f, -0.5f, -0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		0.5f, -0.5f,  0.5f, 
-		-0.5f, -0.5f,  0.5f,
-		-0.5f, -0.5f, -0.5f,
-
-		-0.5f,  0.5f, -0.5f,
-		0.5f,  0.5f, -0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		0.5f,  0.5f,  0.5f, 
-		-0.5f,  0.5f,  0.5f,
-		-0.5f,  0.5f, -0.5f,
-	};
-
-	// clang-format on
-
-	vertex_buffer_id2 = gfx_backend->createVertexBuffer(vertices, sizeof(vertices), gfx::BUFFER_USAGE::STATIC);
-
-	gfx::Attributes attributes;
-	attributes.append(gfx::GPU_Attribute(gfx::GPU_Attribute::VEC3, "POSITION"));
-
-	gpu_mesh_id2 = gfx_backend->createGPUMesh(vertex_buffer_id2, attributes);
-
-	// build and compile our shader program
-	gpu_program2 = gfx_backend->createGPUProgram(vertexShaderSource, fragmentShaderSource);
-
-	// initialize projection matrix
-	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
-
-	tex3d = initVol3DTex();
+	// attach the texture and the depth buffer to the framebuffer
+	glGenFramebuffers(1, &g_frameBuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, g_frameBuffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texObj, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+	checkFramebufferStatus();
+	glEnable(GL_DEPTH_TEST);
 }
 
 void
-resize(int width, int height)
+rcSetUinforms()
 {
-	if (width == 0 || height == 0)
-		return;
-
-	scrn_width = width;
-	scrn_height = height;
-	frame_buffer->Resize(width, height);
-	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
+	// setting uniforms such as
+	// ScreenSize
+	// StepSize
+	// TransferFunc
+	// ExitPoints i.e. the backface, the backface hold the ExitPoints of ray casting
+	// VolumeTex the texture that hold the volume data i.e. head256.raw
+	GLint screenSizeLoc = glGetUniformLocation(g_programHandle, "ScreenSize");
+	if (screenSizeLoc >= 0)
+	{
+		glUniform2f(screenSizeLoc, (float)g_winWidth, (float)g_winHeight);
+	}
+	else
+	{
+		cout << "ScreenSize"
+			 << "is not bind to the uniform" << endl;
+	}
+	GLint stepSizeLoc = glGetUniformLocation(g_programHandle, "StepSize");
+	GL_ERROR();
+	if (stepSizeLoc >= 0)
+	{
+		glUniform1f(stepSizeLoc, g_stepSize);
+	}
+	else
+	{
+		cout << "StepSize"
+			 << "is not bind to the uniform" << endl;
+	}
+	GL_ERROR();
+	GLint backFaceLoc = glGetUniformLocation(g_programHandle, "ExitPoints");
+	if (backFaceLoc >= 0)
+	{
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, g_bfTexObj);
+		glUniform1i(backFaceLoc, 1);
+	}
+	else
+	{
+		cout << "ExitPoints"
+			 << "is not bind to the uniform" << endl;
+	}
+	GL_ERROR();
+	GLint volumeLoc = glGetUniformLocation(g_programHandle, "VolumeTex");
+	if (volumeLoc >= 0)
+	{
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_3D, g_volTexObj);
+		glUniform1i(volumeLoc, 2);
+	}
+	else
+	{
+		cout << "VolumeTex"
+			 << "is not bind to the uniform" << endl;
+	}
+}
+// init the shader object and shader program
+void
+initShader()
+{
+	// vertex shader object for first pass
+	g_bfVertHandle = initShaderObj(DATA_DIR "shader/backface.vert", GL_VERTEX_SHADER);
+	// fragment shader object for first pass
+	g_bfFragHandle = initShaderObj(DATA_DIR "shader/backface.frag", GL_FRAGMENT_SHADER);
+	// vertex shader object for second pass
+	g_rcVertHandle = initShaderObj(DATA_DIR "shader/raycasting.vert", GL_VERTEX_SHADER);
+	// fragment shader object for second pass
+	g_rcFragHandle = initShaderObj(DATA_DIR "shader/raycasting.frag", GL_FRAGMENT_SHADER);
+	// create the shader program , use it in an appropriate time
+	g_programHandle = createShaderPgm();
 }
 
+// link the shader objects using the shader program
 void
-render_pass_1()
+linkShader(GLuint shaderPgm, GLuint newVertHandle, GLuint newFragHandle)
 {
+	const GLsizei maxCount = 2;
+	GLsizei count;
+	GLuint shaders[maxCount];
+	glGetAttachedShaders(shaderPgm, maxCount, &count, shaders);
+	// cout << "get VertHandle: " << shaders[0] << endl;
+	// cout << "get FragHandle: " << shaders[1] << endl;
+	GL_ERROR();
+	for (int i = 0; i < count; i++)
+	{
+		glDetachShader(shaderPgm, shaders[i]);
+	}
+	// Bind index 0 to the shader input variable "VerPos"
+	glBindAttribLocation(shaderPgm, 0, "VerPos");
+	// Bind index 1 to the shader input variable "VerClr"
+	glBindAttribLocation(shaderPgm, 1, "VerClr");
+	GL_ERROR();
+	glAttachShader(shaderPgm, newVertHandle);
+	glAttachShader(shaderPgm, newFragHandle);
+	GL_ERROR();
+	glLinkProgram(shaderPgm);
+	if (GL_FALSE == checkShaderLinkStatus(shaderPgm))
+	{
+		cerr << "Failed to relink shader program!" << endl;
+		exit(EXIT_FAILURE);
+	}
+	GL_ERROR();
+}
 
-	frame_buffer->Bind();
-	gfx_backend->setClearColor(glm::vec4(0.3f, 0.3f, 0.3f, 1.0f));
-	gfx_backend->clearBuffer();
+// the color of the vertex in the back face is also the location
+// of the vertex
+// save the back face to the user defined framebuffer bound
+// with a 2D texture named `g_bfTexObj`
+// draw the front face of the box
+// in the rendering process, i.e. the ray marching process
+// loading the volume `g_volTexObj` as well as the `g_bfTexObj`
+// after vertex shader processing we got the color as well as the location of
+// the vertex (in the object coordinates, before transformation).
+// and the vertex assemblied into primitives before entering
+// fragment shader processing stage.
+// in fragment shader processing stage. we got `g_bfTexObj`
+// (correspond to 'VolumeTex' in glsl)and `g_volTexObj`(correspond to 'ExitPoints')
+// as well as the location of primitives.
+// the most important is that we got the GLSL to exec the logic. Here we go!
+// draw the back face of the box
+void
+display()
+{
+	glEnable(GL_DEPTH_TEST);
+	// test the gl_error
+	GL_ERROR();
+	// render to texture
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_frameBuffer);
+	glViewport(0, 0, g_winWidth, g_winHeight);
+	linkShader(g_programHandle, g_bfVertHandle, g_bfFragHandle);
+	glUseProgram(g_programHandle);
+	// cull front face
+	render(GL_FRONT);
+	glUseProgram(0);
+	GL_ERROR();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, g_winWidth, g_winHeight);
+	linkShader(g_programHandle, g_rcVertHandle, g_rcFragHandle);
+	GL_ERROR();
+	glUseProgram(g_programHandle);
+	rcSetUinforms();
+	GL_ERROR();
+	// glUseProgram(g_programHandle);
+	// cull back face
+	render(GL_BACK);
 
-	ImGui::DragFloat("min", &mind);
-	ImGui::DragFloat("max", &maxd);
+	glUseProgram(0);
+	GL_ERROR();
+}
 
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_FRONT);
-	//glFrontFace(GL_CCW);
-	//glDisable(GL_SCISSOR_TEST);
-	//glDepthFunc(GL_LESS);
+// both of the two pass use the "render() function"
+// the first pass render the backface of the boundbox
+// the second pass render the frontface of the boundbox
+// together with the frontface, use the backface as a 2D texture in the second pass
+// to calculate the entry point and the exit point of the ray in and out the box.
+void
+render(GLenum cullFace)
+{
+	g_angle = g_angle + 0.01f;
 
-	gfx_backend->bindGPUProgram(gpu_program2);
+	GL_ERROR();
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//  transform the box
 
 	glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 	glm::mat4 view = glm::mat4(1.0f);
 
-	view = camera.getViewMatrix();
+	model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
-	auto mvp = projection * view * model;
-
-	gfx_backend->setGPUProgramMat4(gpu_program2, "model", model);
-	gfx_backend->setGPUProgramMat4(gpu_program2, "view", view);
-	gfx_backend->setGPUProgramMat4(gpu_program2, "mvp", mvp);
-
-
-	gfx_backend->setGPUProgramFloat(gpu_program2, "minIntensity", mind);
-	gfx_backend->setGPUProgramFloat(gpu_program2, "maxIntensity", maxd);
-
-
-	auto slow_ray_step = camera.getForwardVector() * scalar;
-	
-	glUniform3fv(
-		glGetUniformLocation(gpu_program2, "ray_step"),
-		1,
-		glm::value_ptr(glm::vec3(slow_ray_step.x, slow_ray_step.y, slow_ray_step.z)));
-
-
-	GLint volumeLoc = glGetUniformLocation(gpu_program2, "volume_texture");
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_3D, tex3d);
-
-	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id2, 36);
-
-	//glDisable(GL_CULL_FACE);
-	//glEnable(GL_SCISSOR_TEST);
-	frame_buffer->Unbind();
-}
-
-void
-render()
-{
-	// render to frame buffer
-	render_pass_1();
-
-	// render to main buffer
-	gfx_backend->setClearColor(glm::vec4(0.3f, 0.3f, 0.3f, 1.0f));
-	gfx_backend->clearBuffer();
-
-	gfx_backend->bindTexture2D(frame_buffer->GetTexture());
-	gfx_backend->bindGPUProgram(gpu_program);
-
-	gfx_backend->draw_indexed(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 6);
-}
-
-void
-mouse_scroll(double xoffset, double yoffset)
-{
-	camera.zoom(yoffset);
-}
-
-void
-mouse_move(double xpos, double ypos)
-{
-	if (camera.is_draging)
+	glm::mat4 mvp = projection * view * model;
+	GLuint mvpIdx = glGetUniformLocation(g_programHandle, "MVP");
+	if (mvpIdx >= 0)
 	{
-		camera.rotate(xpos, ypos);
+		glUniformMatrix4fv(mvpIdx, 1, GL_FALSE, &mvp[0][0]);
 	}
+	else
+	{
+		cerr << "can't get the MVP" << endl;
+	}
+	GL_ERROR();
+	drawBox(cullFace);
+	GL_ERROR();
+	// glutWireTeapot(0.5);
 }
 
 void
-mouse_button(int button, int action, int mods)
+reshape(int w, int h)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && camera.is_draging == false)
-	{
-		camera.is_draging = true;
-		camera.start_pos = gfx_backend->getMouse_position();
-	}
-	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
-	{
-		camera.is_draging = false;
-	}
+	g_winWidth = w;
+	g_winHeight = h;
+	g_texWidth = w;
+	g_texHeight = h;
+
+	projection = glm::perspective(glm::radians(45.0f), (float)g_winWidth / (float)g_winHeight, 0.1f, 100.0f);
 }
 
 int
-main()
+main(int argc, char** argv)
 {
-	// initialize gfx
-	// ---------------------------------------
-	gfx_backend->init("gfx frame buffer", scrn_width, scrn_height);
+
+	gfx_backend->init("gfx box 3d", g_winWidth, g_winHeight);
 	gfx_backend->on_Init(init);
-	gfx_backend->on_Render(render);
-	gfx_backend->on_Resize(resize);
-	gfx_backend->on_MouseScroll(mouse_scroll);
-	gfx_backend->on_MouseMove(mouse_move);
-	gfx_backend->on_MouseButton(mouse_button);
-
+	gfx_backend->on_Render(display);
+	gfx_backend->on_Resize(reshape);
 	gfx_backend->start();
-
-	return 0;
 }
