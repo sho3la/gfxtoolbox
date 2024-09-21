@@ -10,8 +10,8 @@ uniform float     StepSize;
 uniform vec2      ScreenSize;
 layout (location = 0) out vec4 FragColor;
 
-		const float minIntensity = -1000; // Minimum intensity value
-		const float maxIntensity = 3096; // Maximum intensity value
+const float minIntensity = 646; // Minimum intensity value
+const float maxIntensity = 3756; // Maximum intensity value
 
 void main()
 {
@@ -33,9 +33,6 @@ void main()
     float intensity;
     float lengthAcum = 0.0;
     vec4 colorSample; // The src color 
-
-    // backgroundColor
-    vec4 bgColor = vec4(1.0, 1.0, 1.0, 0.0);
  
     for(int i = 0; i < 1600; i++)
     {
@@ -51,18 +48,15 @@ void main()
     	voxelCoord += deltaDir;
     	lengthAcum += deltaDirLen;
 		
+		// terminate if opacity > 1 or the ray is outside the volume
     	if (lengthAcum >= len )
-    	{	
-    	    colorAcum.rgb = colorAcum.rgb * colorAcum.a + (1 - colorAcum.a)*bgColor.rgb;		
-    	    break;  // terminate if opacity > 1 or the ray is outside the volume	
+    	{		
+    	    break;  	
     	}	
     	else if (colorAcum.a > 0.99)
     	{
-    	    //colorAcum.a = 1.0;
     	    break;
     	}
     }
     FragColor = colorAcum;
-
-   
 }
