@@ -8,6 +8,82 @@
 #include <iostream>
 #include <fstream>
 
+struct OrbitalCamera
+{
+	OrbitalCamera(float distance, float azimuth, float elevation)
+		: distance(distance), azimuth(azimuth), elevation(elevation), target(glm::vec3(0.0f, 0.0f, 0.0f))
+	{
+	}
+
+	glm::mat4
+	getViewMatrix()
+	{
+		// Convert spherical coordinates to Cartesian coordinates
+		float x = distance * cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
+		float y = distance * sin(glm::radians(elevation));
+		float z = distance * cos(glm::radians(elevation)) * sin(glm::radians(azimuth));
+
+		// Create the camera position
+		glm::vec3 cameraPosition(x, y, z);
+
+		// The view matrix is the inverse of the look-at matrix
+		return glm::lookAt(cameraPosition, target, glm::vec3(0, 1, 0));
+	}
+
+	glm::vec3
+	getForwardVector()
+	{
+		float x = cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
+		float y = sin(glm::radians(elevation));
+		float z = cos(glm::radians(elevation)) * sin(glm::radians(azimuth));
+
+		// Create the camera position
+		glm::vec3 cameraPosition(x, y, z);
+
+		// Normalize the forward vector
+		glm::vec3 forward = glm::normalize(cameraPosition - target);
+
+		return forward;
+	}
+
+	void
+	zoom(float yoffset)
+	{
+		distance = distance - (float)yoffset * zoomSpeed;
+	}
+
+	void
+	rotate(float xpos, float ypos)
+	{
+		float xoffset = xpos - start_pos.x;
+		float yoffset = ypos - start_pos.y;
+		start_pos = glm::vec2(xpos, ypos);
+
+		xoffset *= rot_sensitivity;
+		yoffset *= rot_sensitivity;
+
+		azimuth = azimuth + xoffset;
+		elevation = elevation + yoffset;
+
+		// clamp to range [-90, 90] around the horizontal axis
+		elevation = glm::clamp(elevation, -90.0f, 90.0f);
+	}
+
+	float distance;	 // Distance from the target
+	float azimuth;	 // Rotation around the vertical axis (in degrees)
+	float elevation; // Rotation around the horizontal axis (in degrees)
+
+	glm::vec3 target; // point to look at
+
+	float zoomSpeed = 1.0f;
+	float rot_sensitivity = 0.5f;
+
+	bool is_draging = false;
+	glm::vec2 start_pos;
+};
+
+OrbitalCamera camera(10.0f, -0.1f, 42.0f);
+
 // global
 auto gfx_backend = std::make_shared<gfx::GFX>();
 
@@ -20,6 +96,7 @@ int scrn_height = 600;
 std::shared_ptr<gfx::Framebuffer> frame_buffer;
 
 float mind = -1000, maxd = 3094;
+float scalar = 0.05f;
 
 // create transformations
 glm::mat4 projection = glm::mat4(1.0f);
@@ -64,7 +141,7 @@ const char* vertexShaderSource = R"(
 			void main()
 			{
 				vec4 cs_position = mvp * vec4(input_position, 1.0);
-				vec3 uv = input_position + vec3(0.5);
+				vec3 uv = input_position + vec3(0.5,0.5,0.5);
 
 				gl_Position = cs_position;
 				entryPoint = uv; // Pass the entry point
@@ -83,27 +160,13 @@ const char* fragmentShaderSource = R"(
 
 		uniform vec3 ray_step; // Maximum intensity value
 
-		const vec2 screenSize = vec2(800,600); // Size of the screen
-
-
 		void main() {
-
-			// Get exit point from the exitPoints texture
-			vec3 exitPoint = vec3(gl_FragCoord.st / screenSize, 0.0);
-
-			// Skip rendering if the entry and exit points are the same
-			if (entryPoint == exitPoint)
-				discard;
-
-			// Compute the direction from entry point to exit point
-			vec3 dir = exitPoint - entryPoint;
-			float len = length(dir);
 
 			vec3 voxelCoord = entryPoint; // Start at the entry point
 			vec4 colorAccum = vec4(0.0); // Accumulated color
 
 			// Sample along the ray for a fixed number of iterations
-			for (int i = 0; i < 200; i++)
+			for (int i = 0; i < 1000; i++)
 			 {
 				// Sample the red channel from the 3D texture
 				float intensity = texture(volume, voxelCoord).r;
@@ -112,7 +175,7 @@ const char* fragmentShaderSource = R"(
 				float normalizedIntensity = (intensity - minIntensity) / (maxIntensity - minIntensity);
 				normalizedIntensity = clamp(normalizedIntensity, 0.0, 1.0); // Clamp to [0, 1]
 
-				float prev_alpha = normalizedIntensity * (1.0 - colorAccum.a);
+				float prev_alpha = normalizedIntensity * (1.0 - colorAccum.a) * 0.1;
 
 				// Accumulate color as grayscale
 				colorAccum += vec4(normalizedIntensity, normalizedIntensity, normalizedIntensity, prev_alpha);
@@ -121,10 +184,6 @@ const char* fragmentShaderSource = R"(
 				// Move to the next voxel along the ray
 				voxelCoord += ray_step;
 
-				// Stop if we've reached the exit point
-				if (length(voxelCoord - entryPoint) >= len) {
-					break;
-				}
 			}
 
 			// Finalize the color output
@@ -313,7 +372,7 @@ init()
 	gpu_program2 = gfx_backend->createGPUProgram(vertexShaderSource, fragmentShaderSource);
 
 	// initialize projection matrix
-	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.1f, 100.0f);
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
 
 	tex3d = initVol3DTex();
 }
@@ -327,6 +386,7 @@ resize(int width, int height)
 	scrn_width = width;
 	scrn_height = height;
 	frame_buffer->Resize(width, height);
+	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.01f, 10000.0f);
 }
 
 void
@@ -334,7 +394,7 @@ render_pass_1()
 {
 
 	frame_buffer->Bind();
-	gfx_backend->setClearColor(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+	gfx_backend->setClearColor(glm::vec4(0.3f, 0.3f, 0.3f, 1.0f));
 	gfx_backend->clearBuffer();
 
 	ImGui::DragFloat("min", &mind);
@@ -351,8 +411,7 @@ render_pass_1()
 	glm::mat4 model = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
 	glm::mat4 view = glm::mat4(1.0f);
 
-	//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+	view = camera.getViewMatrix();
 
 	auto mvp = projection * view * model;
 
@@ -363,9 +422,8 @@ render_pass_1()
 	gfx_backend->setGPUProgramFloat(gpu_program2, "minIntensity", mind);
 	gfx_backend->setGPUProgramFloat(gpu_program2, "maxIntensity", maxd);
 
-	float scalar = 0.15f;
-	glm::vec4 voxel_size(0.0123152705, 0.0123152705, 0.0103734434, 1);
-	auto slow_ray_step = glm::inverse(model) * glm::vec4(0,0,1,1) * voxel_size * scalar;
+
+	auto slow_ray_step = camera.getForwardVector() * scalar;
 	
 	glUniform3fv(
 		glGetUniformLocation(gpu_program2, "ray_step"),
@@ -376,8 +434,6 @@ render_pass_1()
 	GLint volumeLoc = glGetUniformLocation(gpu_program2, "volume_texture");
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_3D, tex3d);
-
-
 
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id2, 36);
 
@@ -393,13 +449,42 @@ render()
 	render_pass_1();
 
 	// render to main buffer
-	gfx_backend->setClearColor(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+	gfx_backend->setClearColor(glm::vec4(0.3f, 0.3f, 0.3f, 1.0f));
 	gfx_backend->clearBuffer();
 
 	gfx_backend->bindTexture2D(frame_buffer->GetTexture());
 	gfx_backend->bindGPUProgram(gpu_program);
 
 	gfx_backend->draw_indexed(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, 6);
+}
+
+void
+mouse_scroll(double xoffset, double yoffset)
+{
+	camera.zoom(yoffset);
+}
+
+void
+mouse_move(double xpos, double ypos)
+{
+	if (camera.is_draging)
+	{
+		camera.rotate(xpos, ypos);
+	}
+}
+
+void
+mouse_button(int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && camera.is_draging == false)
+	{
+		camera.is_draging = true;
+		camera.start_pos = gfx_backend->getMouse_position();
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	{
+		camera.is_draging = false;
+	}
 }
 
 int
@@ -411,6 +496,9 @@ main()
 	gfx_backend->on_Init(init);
 	gfx_backend->on_Render(render);
 	gfx_backend->on_Resize(resize);
+	gfx_backend->on_MouseScroll(mouse_scroll);
+	gfx_backend->on_MouseMove(mouse_move);
+	gfx_backend->on_MouseButton(mouse_button);
 
 	gfx_backend->start();
 
