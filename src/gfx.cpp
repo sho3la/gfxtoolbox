@@ -666,6 +666,18 @@ namespace gfx
 	}
 
 	void
+	GFX::setGPUProgramVec2(uint32_t gpu_program, const std::string& name, const glm::vec2& val)
+	{
+		glUniform2fv(glGetUniformLocation(gpu_program, name.c_str()), 1, glm::value_ptr(val));
+	}
+
+	void
+	GFX::setGPUProgramVec3(uint32_t gpu_program, const std::string& name, const glm::vec3& val)
+	{
+		glUniform3fv(glGetUniformLocation(gpu_program, name.c_str()), 1, glm::value_ptr(val));
+	}
+
+	void
 	GFX::setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat)
 	{
 		glUniformMatrix4fv(glGetUniformLocation(gpu_program, name.c_str()), 1, GL_FALSE, &mat[0][0]);
@@ -675,6 +687,12 @@ namespace gfx
 	GFX::setGPUProgramFloat(uint32_t gpu_program, const std::string& name, const float& val)
 	{
 		glUniform1f(glGetUniformLocation(gpu_program, name.c_str()), val);
+	}
+
+	void
+	GFX::setGPUProgramInt(uint32_t gpu_program, const std::string& name, const int& val)
+	{
+		glUniform1i(glGetUniformLocation(gpu_program, name.c_str()), val);
 	}
 
 	void

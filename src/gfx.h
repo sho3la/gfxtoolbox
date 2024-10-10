@@ -104,10 +104,19 @@ namespace gfx
 		bindGPUProgram(uint32_t gpu_program);
 
 		void
+		setGPUProgramVec2(uint32_t gpu_program, const std::string& name, const glm::vec2& val);
+
+		void
+		setGPUProgramVec3(uint32_t gpu_program, const std::string& name, const glm::vec3& val);
+
+		void
 		setGPUProgramMat4(uint32_t gpu_program, const std::string& name, const glm::mat4& mat);
 
 		void
 		setGPUProgramFloat(uint32_t gpu_program, const std::string& name, const float& val);
+
+		void
+		setGPUProgramInt(uint32_t gpu_program, const std::string& name, const int& val);
 
 		void
 		bindTexture1D(uint32_t texture1d);
