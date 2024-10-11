@@ -121,7 +121,7 @@ const char* fragmentShader =
 				float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); // Shininess factor
 
 				// Ambient light component
-				vec3 ambient = 0.1 * lightColor; // Low ambient intensity
+				vec3 ambient = 0.2 * lightColor; // Low ambient intensity
     
 				// Combine results with attenuation
 				vec3 diffuse = diff * lightColor * attenuation;
