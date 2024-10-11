@@ -18,7 +18,7 @@ glm::vec3 cameraTarget(0, 10, 0);
 
 uint32_t gpu_program;
 
-glm::vec3 point_light_pos(5, 20, 6);
+glm::vec3 point_light_pos(5, 20, 3);
 float point_light_power = 500;
 
 // clang-format off
@@ -344,8 +344,8 @@ class Sphere
 public:
 	Sphere()
 	{
-
-		model = glm::translate(glm::mat4(1.0f), glm::vec3(cameraTarget));
+		glm::vec3 pos(0, 10, -3);
+		model = glm::translate(glm::mat4(1.0f), glm::vec3(pos));
 
 		generate(3, 150, 150);
 
