@@ -13,13 +13,13 @@ int scrn_height = 600;
 glm::mat4 view = glm::mat4(1.0f);
 glm::mat4 projection = glm::mat4(1.0f);
 
-glm::vec3 cameraPosition(0, 11, 10);
-glm::vec3 cameraTarget(0, 10, 0);
+glm::vec3 cameraPosition(0, 14, 34.5);
+glm::vec3 cameraTarget(0, 7.3f, 0);
 
 uint32_t gpu_program;
 
-glm::vec3 point_light_pos(5, 20, 3);
-float point_light_power = 500;
+glm::vec3 point_light_pos(20, 50, 9);
+float point_light_power = 1000;
 
 // clang-format off
 
@@ -309,23 +309,14 @@ public:
 	~Cyclorama() {}
 
 	void
-	draw(glm::mat4& projection, glm::mat4& view)
+	draw()
 	{
-		gfx_backend->bindGPUProgram(gpu_program);
-
 		gfx_backend->setGPUProgramMat4(gpu_program, "model", model);
-		gfx_backend->setGPUProgramMat4(gpu_program, "view", view);
-		gfx_backend->setGPUProgramMat4(gpu_program, "projection", projection);
 
 		gfx_backend->setGPUProgramInt(gpu_program, "use_checker_texture", 1);
 		gfx_backend->setGPUProgramFloat(gpu_program, "scale", scale_val);
 		gfx_backend->setGPUProgramVec3(gpu_program, "color1", color1);
 		gfx_backend->setGPUProgramVec3(gpu_program, "color2", color2);
-
-		gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
-		gfx_backend->setGPUProgramVec3(gpu_program, "viewPos", cameraPosition);
-		gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
-		gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
 
 		gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, vertices.size() / 8);
 	}
@@ -344,10 +335,11 @@ class Sphere
 public:
 	Sphere()
 	{
-		glm::vec3 pos(0, 10, -3);
+		radius = 10;
+		pos = glm::vec3(0, radius, -5);
 		model = glm::translate(glm::mat4(1.0f), glm::vec3(pos));
 
-		generate(3, 150, 150);
+		generate(radius, 150, 150);
 
 		vertex_buffer_id = gfx_backend->createVertexBuffer(
 			vertices.data(),
@@ -515,26 +507,18 @@ public:
 	}
 
 	void
-	draw(glm::mat4& projection, glm::mat4& view)
+	draw()
 	{
-		gfx_backend->bindGPUProgram(gpu_program);
-
 		gfx_backend->setGPUProgramMat4(gpu_program, "model", model);
-		gfx_backend->setGPUProgramMat4(gpu_program, "view", view);
-		gfx_backend->setGPUProgramMat4(gpu_program, "projection", projection);
-
 		gfx_backend->setGPUProgramInt(gpu_program, "use_checker_texture", 0);
-
-		gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
-		gfx_backend->setGPUProgramVec3(gpu_program, "viewPos", cameraPosition);
-		gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
-		gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
-
 		gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, vertices.size() / 8);
 	}
 
-private:
+	glm::vec3 pos;
 	glm::mat4 model;
+
+private:
+	float radius;
 	uint32_t vertex_buffer_id, gpu_mesh_id;
 	std::vector<float> vertices;
 };
@@ -564,8 +548,18 @@ render()
 
 	ImGui::SliderFloat("light power", &point_light_power, 100.0f, 2000.0f);
 
-	scene_cyclorama->draw(projection, view);
-	sphere->draw(projection, view);
+	gfx_backend->bindGPUProgram(gpu_program);
+
+	gfx_backend->setGPUProgramMat4(gpu_program, "view", view);
+	gfx_backend->setGPUProgramMat4(gpu_program, "projection", projection);
+
+	gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
+	gfx_backend->setGPUProgramVec3(gpu_program, "viewPos", cameraPosition);
+	gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
+	gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
+
+	scene_cyclorama->draw();
+	sphere->draw();
 }
 
 void
