@@ -1,7 +1,7 @@
 #include "gfx.h"
 
-#include <iostream>
 #include <imgui.h>
+#include <iostream>
 
 // global
 auto gfx_backend = std::make_shared<gfx::GFX>();
@@ -18,6 +18,9 @@ glm::vec3 cameraTarget(0, 10, 0);
 
 uint32_t gpu_program;
 
+glm::vec3 point_light_pos(5, 20, 3);
+float point_light_power = 500;
+
 // clang-format off
 
 const char*	vertexShader =
@@ -28,8 +31,8 @@ const char*	vertexShader =
 		layout(location = 2) in vec3 aNormal;
 
 		out vec2 TexCoord; // Output texture coordinates
-		out vec3 Normal;
-
+		out vec3 fragPos;      // Position of the fragment
+		out vec3 fragNormal;   // Normal of the fragment
 
 		uniform mat4 model;
 		uniform mat4 view;
@@ -37,9 +40,12 @@ const char*	vertexShader =
 
 		void main()
 		{
-			gl_Position = projection * view * model * vec4(aPos, 1.0f);
+			fragPos = (model * vec4(aPos, 1.0)).xyz;
+			fragNormal = normalize(transpose(inverse(model)) * vec4(aNormal, 1.0)).xyz;
 			TexCoord = aTexCoord;
-			Normal = aNormal;
+
+			gl_Position = projection * view * vec4(fragPos, 1.0);
+			
 		})";
 
 const char* fragmentShader =
@@ -47,7 +53,13 @@ const char* fragmentShader =
 		#version 450 core
 		out vec4 FragColor;
 		in vec2 TexCoord;
-		in vec3 Normal;
+		in vec3 fragNormal;
+		in vec3 fragPos;
+
+		uniform vec3 lightPos;     // Position of the point light
+		uniform vec3 viewPos;      // Position of the viewer/camera
+		uniform vec3 lightColor;   // Color of the light
+		uniform float lightPower;  // Power of the light
 
 		uniform bool use_checker_texture;
 		uniform float scale; // Adjust this value for larger/smaller squares
@@ -82,8 +94,43 @@ const char* fragmentShader =
 			{
 				final_col = checker(TexCoord, scale, color1, color2);
 			}
+	
+				// Normalize the normal vector
+				vec3 norm = normalize(fragNormal);
+    
+				// Calculate the direction from the fragment to the light
+				vec3 lightDir = normalize(lightPos - fragPos);
+    
+				// Calculate the distance to the light
+				float distance = length(lightPos - fragPos);
+    
+				// Attenuation calculation
+				float attenuation = lightPower / (distance * distance);
+				attenuation = clamp(attenuation, 0.0, 1.0); // Clamp to [0, 1] range
+    
+				// Calculate the diffuse component
+				float diff = max(dot(norm, lightDir), 0.0);
+    
+				// Calculate the view direction
+				vec3 viewDir = normalize(viewPos - fragPos);
+    
+				// Calculate the reflection vector
+				vec3 reflectDir = reflect(-lightDir, norm);
+    
+				// Calculate the specular component
+				float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); // Shininess factor
 
-			FragColor = final_col;
+				// Ambient light component
+				vec3 ambient = 0.1 * lightColor; // Low ambient intensity
+    
+				// Combine results with attenuation
+				vec3 diffuse = diff * lightColor * attenuation;
+				vec3 specular = spec * lightColor * attenuation;
+
+				// Final color
+				vec3 result = (ambient + diffuse /*+ specular */) * final_col.xyz;
+
+				FragColor = vec4(result, 1.0);
 		})";
 
 // clang-format on
@@ -91,7 +138,8 @@ const char* fragmentShader =
 class Cyclorama
 {
 public:
-	Cyclorama() {
+	Cyclorama()
+	{
 
 		// clang-format off
 
@@ -258,7 +306,7 @@ public:
 		color2 = glm::vec3(0.8f, 0.8f, 0.8f);
 	}
 
-	~Cyclorama(){}
+	~Cyclorama() {}
 
 	void
 	draw(glm::mat4& projection, glm::mat4& view)
@@ -274,11 +322,15 @@ public:
 		gfx_backend->setGPUProgramVec3(gpu_program, "color1", color1);
 		gfx_backend->setGPUProgramVec3(gpu_program, "color2", color2);
 
-		gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, vertices.size()/8);
+		gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
+		gfx_backend->setGPUProgramVec3(gpu_program, "viewPos", cameraPosition);
+		gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
+		gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
+
+		gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, vertices.size() / 8);
 	}
 
 private:
-
 	glm::mat4 model;
 	float scale_val;
 	glm::vec3 color1;
@@ -290,11 +342,12 @@ private:
 class Sphere
 {
 public:
-	Sphere() {
+	Sphere()
+	{
 
 		model = glm::translate(glm::mat4(1.0f), glm::vec3(cameraTarget));
 
-		generate(3, 50, 25);
+		generate(3, 150, 150);
 
 		vertex_buffer_id = gfx_backend->createVertexBuffer(
 			vertices.data(),
@@ -503,6 +556,8 @@ render()
 {
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
 	gfx_backend->clearBuffer();
+
+	ImGui::SliderFloat("light power", &point_light_power, 100.0f, 2000.0f);
 
 	scene_cyclorama->draw(projection, view);
 	sphere->draw(projection, view);
