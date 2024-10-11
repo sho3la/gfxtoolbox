@@ -18,7 +18,7 @@ glm::vec3 cameraTarget(0, 10, 0);
 
 uint32_t gpu_program;
 
-glm::vec3 point_light_pos(5, 20, 3);
+glm::vec3 point_light_pos(5, 20, 6);
 float point_light_power = 500;
 
 // clang-format off
@@ -524,6 +524,11 @@ public:
 		gfx_backend->setGPUProgramMat4(gpu_program, "projection", projection);
 
 		gfx_backend->setGPUProgramInt(gpu_program, "use_checker_texture", 0);
+
+		gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
+		gfx_backend->setGPUProgramVec3(gpu_program, "viewPos", cameraPosition);
+		gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
+		gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
 
 		gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, gpu_mesh_id, vertices.size() / 8);
 	}
