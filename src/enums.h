@@ -34,4 +34,10 @@ namespace gfx
 		LINEAR_MIPMAP_LINEAR,
 	};
 
+	enum FrameBuffer_Mode
+	{
+		RenderBuffer,
+		DepthCubeMap,
+	};
+
 } // namespace gfx

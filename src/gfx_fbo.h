@@ -1,11 +1,13 @@
 #pragma once
 
+#include "enums.h"
+
 namespace gfx
 {
 	class Framebuffer
 	{
 	public:
-		Framebuffer(int width, int height);
+		Framebuffer(int width, int height, FrameBuffer_Mode mode = RenderBuffer);
 		~Framebuffer();
 
 		void
@@ -26,11 +28,18 @@ namespace gfx
 		unsigned int rbo; // Renderbuffer object for depth/stencil
 		int width;
 		int height;
+		FrameBuffer_Mode mode;
 
 		void
-		createFramebuffer();
+		createRenderBuffer();
 
 		void
-		deleteFramebuffer();
+		deleteRenderBuffer();
+
+		void
+		createDepthCubeMapBuffer();
+
+		void
+		deleteDepthCubeMapBuffer();
 	};
 } // namespace gfx
