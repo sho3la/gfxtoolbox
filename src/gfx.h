@@ -100,6 +100,9 @@ namespace gfx
 		uint32_t
 		createGPUProgram(const char* vs, const char* fs);
 
+		uint32_t
+		createGPUProgram(const char* vs, const char* gs, const char* fs);
+
 		void
 		bindGPUProgram(uint32_t gpu_program);
 
