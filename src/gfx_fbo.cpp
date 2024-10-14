@@ -167,10 +167,26 @@ namespace gfx
 	{
 		if (newWidth != width || newHeight != height)
 		{
-			deleteRenderBuffer();
 			width = newWidth;
 			height = newHeight;
-			createRenderBuffer();
+
+			switch (mode)
+			{
+			case gfx::RenderBuffer:
+				deleteRenderBuffer();
+				createRenderBuffer();
+				break;
+			case gfx::DepthBuffer:
+				deleteDepthBuffer();
+				createDepthBuffer();
+				break;
+			case gfx::DepthCubeMap:
+				deleteDepthCubeMapBuffer();
+				createDepthCubeMapBuffer();
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
