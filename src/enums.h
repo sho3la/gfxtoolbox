@@ -37,6 +37,7 @@ namespace gfx
 	enum FrameBuffer_Mode
 	{
 		RenderBuffer,
+		DepthBuffer,
 		DepthCubeMap,
 	};
 

@@ -34,7 +34,13 @@ namespace gfx
 		createRenderBuffer();
 
 		void
+		createDepthBuffer();
+
+		void
 		deleteRenderBuffer();
+
+		void
+		deleteDepthBuffer();
 
 		void
 		createDepthCubeMapBuffer();
