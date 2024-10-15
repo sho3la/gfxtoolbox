@@ -89,7 +89,7 @@ namespace gfx
 	{
 		// glfw: initialize and configure
 		glfwInit();
-		glfwWindowHint(GLFW_SAMPLES, 4);
+		glfwWindowHint(GLFW_SAMPLES, 8);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -130,6 +130,8 @@ namespace gfx
 
 		// configure global opengl state
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_BLEND);
 
 		return true;
 	}
