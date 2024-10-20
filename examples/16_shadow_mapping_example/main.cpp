@@ -10,6 +10,9 @@ auto gfx_backend = std::make_shared<gfx::GFX>();
 int scrn_width = 800;
 int scrn_height = 600;
 
+int shadow_width = 2048;
+int shadow_height = 2048;
+
 // create transformations
 glm::mat4 view = glm::mat4(1.0f);
 glm::mat4 projection = glm::mat4(1.0f);
@@ -26,7 +29,11 @@ std::shared_ptr<gfx::Framebuffer> depth_frame_buffer;
 float near_plane = 1.0f, far_plane = 1000.0f;
 
 glm::vec3 point_light_pos(20, 50, 9);
-float point_light_power = 2000;
+float point_light_power = 1000;
+glm::vec3 light_color(1.0, 1.0, 1.0);
+
+float gamma = 1.4f;
+float ambient_factor = 0.2f;
 
 // clang-format off
 
@@ -99,81 +106,47 @@ const char* fragmentShader =
 		uniform vec3 color1; // white
 		uniform vec3 color2; // black
 
+		uniform float gamma;
+		uniform float ambient_factor;
+
+
 		uniform sampler2D shadowMap;
 
-		// Poisson disk for PCF
-		vec2 poissonDisk[16] = vec2[](
-			vec2(-0.94201624, -0.39906216),
-			vec2(0.94558609, -0.76890725),
-			vec2(-0.094184101, -0.92938870),
-			vec2(0.34495938, 0.29387760),
-			vec2(-0.91588581, 0.45771432),
-			vec2(-0.81544232, -0.87912464),
-			vec2(-0.38277543, 0.27676845),
-			vec2(0.97484398, 0.75648379),
-			vec2(0.44323325, -0.97511554),
-			vec2(0.53742981, -0.47373420),
-			vec2(-0.26496911, -0.41893023),
-			vec2(0.79197514, 0.19090188),
-			vec2(-0.24188840, 0.99706507),
-			vec2(-0.81409955, 0.91437590),
-			vec2(0.19984126, 0.78641367),
-			vec2(0.14383161, -0.14100790)
-		);
-
 		float ShadowCalculation(vec4 fragPosLightSpace) {
-				// perform perspective divide
-				vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+			// perform perspective divide
+			vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 
-				// transform to [0,1] range
-				projCoords = projCoords * 0.5 + 0.5;
+			// transform to [0,1] range
+			projCoords = projCoords * 0.5 + 0.5;
 
-				// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-				float closestDepth = texture(shadowMap, projCoords.xy).r; 
+			// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+			float closestDepth = texture(shadowMap, projCoords.xy).r; 
 
-				// get depth of current fragment from light's perspective
-				float currentDepth = projCoords.z;
+			// get depth of current fragment from light's perspective
+			float currentDepth = projCoords.z;
 
-				// calculate bias (based on depth map resolution and slope)
-				vec3 normal = normalize(fragNormal);
-				vec3 lightDir = normalize(lightPos - fragPos);
-				float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+			// calculate bias (based on depth map resolution and slope)
+			vec3 normal = normalize(fragNormal);
+			vec3 lightDir = normalize(lightPos - fragPos);
+			float bias = max(0.1 * (1.0 - dot(normal, lightDir)), 0.01);
 
-				// Poisson Disk Samples
-				vec2 poissonDisk[16] = vec2[](
-					vec2(-0.942016, -0.399176),
-					vec2(0.945586, -0.768906),
-					vec2(-0.394625, 0.925265),
-					vec2(0.123949, 0.697164),
-					vec2(-0.326212, -0.592185),
-					vec2(0.095443, -0.719851),
-					vec2(-0.507256, 0.097454),
-					vec2(0.200468, 0.151306),
-					vec2(-0.816497, -0.408248),
-					vec2(0.408248, -0.816497),
-					vec2(-0.408248, 0.816497),
-					vec2(0.816497, 0.408248),
-					vec2(-0.912870, -0.912870),
-					vec2(0.912870, 0.912870),
-					vec2(-0.577350, 0.577350),
-					vec2(0.577350, -0.577350)
-				);
+			float shadow = 0.0;
+			vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+			for(int x = -1; x <= 1; ++x)
+			{
+				for(int y = -1; y <= 1; ++y)
+				{
+					float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+					shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
+				}    
+			}
+			shadow /= 9.0;
 
-				// PCF with Poisson Sampling
-					
-				float shadow = 0.0;
-				for (int i = 0; i < 16; ++i) {
-					vec2 offset = poissonDisk[i] / 700.0; // Adjust for your shadow map size
-					float pcfDepth = texture(shadowMap, projCoords.xy + offset).r;
-					shadow += (currentDepth - bias > pcfDepth) ? 1.0 : 0.0;
-				}
-				shadow /= 16.0; // Average the results
+			// keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
+			if(projCoords.z > 1.0)
+				shadow = 0.0;
 
-				// Keep the shadow at 0.0 when outside the far_plane region of the light's frustum.
-				if (projCoords.z > 1.0)
-					shadow = 0.0;
-
-				return shadow;
+			return shadow;
 		}
 
 		vec4 checker(vec2 _TexCoord, float _scale, vec3 _color1, vec3 _color2)
@@ -222,16 +195,17 @@ const char* fragmentShader =
 				float diff = max(dot(norm, lightDir), 0.0);
 
 				// Ambient light component
-				vec3 ambient = 0.2 * lightColor; // Low ambient intensity
+				vec3 ambient = ambient_factor * lightColor; // Low ambient intensity
 
 				// Combine results with attenuation
 				vec3 diffuse = diff * lightColor * attenuation;
+				diffuse = pow(diffuse, vec3(1.0/gamma));
 
 				// calculate shadow
 				float shadow = ShadowCalculation(FragPosLightSpace);
 
 				// Final color
-				vec3 result = (1.0 - shadow) * diffuse * final_col.xyz;
+				vec3 result = ((1.0 - shadow * 0.7)) * (diffuse + ambient) * final_col.xyz;
 
 				FragColor = vec4(result, 1.0);
 		})";
@@ -648,7 +622,7 @@ init()
 
 	// create another render buffer to render on it.
 	depth_frame_buffer =
-		std::make_shared<gfx::Framebuffer>(scrn_width, scrn_height, gfx::FrameBuffer_Mode::DepthBuffer);
+		std::make_shared<gfx::Framebuffer>(shadow_width, shadow_height, gfx::FrameBuffer_Mode::DepthBuffer);
 }
 
 void
@@ -672,20 +646,15 @@ render_depthmap()
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES, sphere->gpu_mesh_id, sphere->vertices.size() / 8);
 
 	depth_frame_buffer->Unbind();
-
 }
 
 void
 render()
 {
+	gfx_backend->updateViewport(shadow_width, shadow_height);
 	render_depthmap();
 
-	ImGui::SliderFloat("back", &cameraPosition.z, 34.5f, 100.0f);
-	ImGui::SliderFloat("up", &cameraTarget.y, 7.3f, 100.0f);
-	view = glm::lookAt(cameraPosition, cameraTarget, glm::vec3(0, 1, 0));
-
-
-
+	gfx_backend->updateViewport(scrn_width, scrn_height);
 
 	gfx_backend->setClearColor(glm::vec4(0.0f, 0.67f, 0.9f, 1.0f));
 	gfx_backend->clearBuffer();
@@ -698,8 +667,11 @@ render()
 	gfx_backend->setGPUProgramMat4(gpu_program, "lightSpaceMatrix", light_projection * light_view);
 
 	gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", point_light_pos);
-	gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", glm::vec3(1, 1, 1));
+	gfx_backend->setGPUProgramVec3(gpu_program, "lightColor", light_color);
 	gfx_backend->setGPUProgramFloat(gpu_program, "lightPower", point_light_power);
+
+	gfx_backend->setGPUProgramFloat(gpu_program, "gamma", gamma);
+	gfx_backend->setGPUProgramFloat(gpu_program, "ambient_factor", ambient_factor);
 
 	// render cyclorama
 	gfx_backend->setGPUProgramMat4(gpu_program, "model", scene_cyclorama->model);
@@ -727,7 +699,6 @@ resize(int width, int height)
 	scrn_width = width;
 	scrn_height = height;
 	projection = glm::perspective(glm::radians(45.0f), (float)scrn_width / (float)scrn_height, 0.1f, 1000.0f);
-	depth_frame_buffer->Resize(width, height);
 }
 
 int
