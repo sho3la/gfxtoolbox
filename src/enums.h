@@ -13,7 +13,8 @@ namespace gfx
 		POINTS,
 		LINES,
 		LINE_STRIP,
-		TRIANGLES
+		TRIANGLES,
+		TRIANGLES_STRIP
 	};
 
 	enum Wrapping_Mode
