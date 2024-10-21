@@ -791,6 +791,8 @@ namespace gfx
 			glDrawArrays(GL_LINE_STRIP, 0, vertices_count);
 		else if (type == TRIANGLES)
 			glDrawArrays(GL_TRIANGLES, 0, vertices_count);
+		else if (type == TRIANGLES_STRIP)
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, vertices_count);
 	}
 
 	void
