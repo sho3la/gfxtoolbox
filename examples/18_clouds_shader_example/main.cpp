@@ -165,23 +165,18 @@ const char* fragmentShader =R"(
 			return f;
 		}
 
-
 		vec3 skyColor( in vec3 rd )
 		{
-			vec3 sundir = normalize( lightPos );
+			vec3 moondir = normalize( lightPos );
 
 			float yd = min(rd.y, 0.);
 			rd.y = max(rd.y, 0.);
 
 			vec3 col = vec3(0.);
-
-			col += vec3(0.9, 0.9 , 0.9) * exp(-rd.y * 9.0); // Red / Green
-			col += vec3(0.3, 0.5, 0.7) * (1. - exp(-rd.y * 8.0) ) * exp(-rd.y * 0.9); // Blue
-
+			col += vec3(0.1, 0.1, 0.2) * (1. - exp(-rd.y * 8.0) ) * exp(-rd.y * 0.9); // Blue
 			col = mix(col*1.2, vec3(0.8),  1.-exp(yd*100.)); // Fog
-
-			col += vec3(1.0, 0.8, 0.55) * pow( max(dot(rd,sundir),0.), 15. ) * .3; // Sun
-			col += vec3(1.0, 0.5, 0.3) * pow(max(dot(rd, sundir),0.), 300.0) ;
+			col += vec3(1.0, 1.0, 1.0) * pow( max(dot(rd,moondir),0.), 15. ) * .3; // Moon
+			col += vec3(1.0, 1.0, 1.0) * pow(max(dot(rd, moondir),0.), 300.0) ;
 
 			// Cloud color
 			if (rd.y > 0.0)
