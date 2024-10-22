@@ -138,6 +138,34 @@ const char* fragmentShader =R"(
 
 		out vec4 FragColor;
 
+		float hash(float n)
+		{
+			return fract(sin(n) * 43758.5453123);
+		}
+
+		float noise(vec3 x)
+		{
+			vec3 f = fract(x);
+			float n = dot(floor(x), vec3(1.0, 157.0, 113.0));
+			return mix(mix(mix(hash(n +   0.0), hash(n +   1.0), f.x),
+							mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
+						mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+							mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
+		}
+
+		const mat3 m = mat3(0.0, 1.60,  1.20, -1.6, 0.72, -0.96, -1.2, -0.96, 1.28);
+		float fbm(vec3 p)
+		{
+			float f = 0.0;
+			f += noise(p) / 2; p = m * p * 1.1;
+			f += noise(p) / 4; p = m * p * 1.2;
+			f += noise(p) / 6; p = m * p * 1.3;
+			f += noise(p) / 12; p = m * p * 1.4;
+			f += noise(p) / 24;
+			return f;
+		}
+
+
 		vec3 skyColor( in vec3 rd )
 		{
 			vec3 sundir = normalize( lightPos );
@@ -154,6 +182,18 @@ const char* fragmentShader =R"(
 
 			col += vec3(1.0, 0.8, 0.55) * pow( max(dot(rd,sundir),0.), 15. ) * .3; // Sun
 			col += vec3(1.0, 0.5, 0.3) * pow(max(dot(rd, sundir),0.), 300.0) ;
+
+			// Cloud color
+			if (rd.y > 0.0)
+			{
+				// Only calculate for the upper half
+				float cirrus = 0.5;
+				float cloud_scale = 5.0;
+				float density = smoothstep(1.0 - cirrus, 1.0,  fbm(rd * cloud_scale));
+				vec3 cloudColor = vec3(1.0, 1.0, 1.0); // White clouds
+
+				return mix(col, cloudColor, density); // Combine sky and cloud colors
+			}
 
 			return col;
 		}
@@ -321,7 +361,7 @@ main()
 {
 	// initialize gfx
 	// ---------------------------------------
-	gfx_backend->init("sky shader example", scrn_width, scrn_height);
+	gfx_backend->init("clouds shader example", scrn_width, scrn_height);
 	gfx_backend->on_Init(init);
 	gfx_backend->on_Render(render);
 	gfx_backend->on_Resize(resize);
