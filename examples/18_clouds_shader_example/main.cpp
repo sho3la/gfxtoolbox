@@ -5,6 +5,8 @@
 #include <iostream>
 
 // global
+auto gfx_backend = std::make_shared<gfx::GFX>();
+
 struct OrbitalCamera
 {
 	OrbitalCamera(float distance, float azimuth, float elevation)
@@ -77,129 +79,6 @@ struct OrbitalCamera
 	bool is_draging = false;
 	glm::vec2 start_pos;
 };
-
-OrbitalCamera camera(68.0f, -0.1f, 25.0f);
-
-auto gfx_backend = std::make_shared<gfx::GFX>();
-
-int scrn_width = 800;
-int scrn_height = 600;
-
-uint32_t sky_vertex_buffer_id, sky_gpu_mesh_id, sky_gpu_program;
-uint32_t scene_vertex_buffer_id, scene_gpu_mesh_id, scene_gpu_program;
-
-uint32_t depth_gpu_program, quad_vertex_buffer_id, quad_index_buffer_id, quad_gpu_mesh_id;
-std::shared_ptr<gfx::Framebuffer> depth_frame_buffer;
-
-float near_plane = 0.1f, far_plane = 200.0f;
-
-glm::vec3 point_light_pos(50);
-float point_light_power = 1000;
-glm::vec3 light_color(1.0, 1.0, 1.0);
-
-float gamma = 1.4f;
-float ambient_factor = 0.2f;
-
-// create transformations
-glm::mat4 model = glm::mat4(1.0f);
-glm::mat4 view = glm::mat4(1.0f);
-glm::mat4 projection = glm::mat4(1.0f);
-
-glm::mat4 light_view = glm::mat4(1.0f);
-glm::mat4 light_projection = glm::mat4(1.0f);
-
-int shadow_width = 2048;
-int shadow_height = 2048;
-
-// clang-format off
-
-const char* sky_vertexShader = R"(
-		#version 450 core
-
-		layout (location = 0) in vec3 Position;
-
-		out vec2 v;
-
-		void main()
-		{
-			v = Position.xy;
-			gl_Position = vec4(Position, 1.0);
-		})";
-
-// refrence shader : https://www.shadertoy.com/view/4dl3z7
-const char* sky_fragmentShader =R"(
-		#version 450 core
-		uniform mat4 inv_view;
-		uniform vec2 resolution;
-		uniform vec3 lightPos;
-		uniform vec3 cameraPos;
-
-		in vec2 v;
-
-		out vec4 FragColor;
-
-		// random/hash function
-		float hash(float n)
-		{
-			return fract(sin(n) * 43758.5453123);
-		}
-
-		float noise(vec3 x)
-		{
-			vec3 f = fract(x);
-			float n = dot(floor(x), vec3(1.0, 157.0, 113.0));
-			return mix(mix(mix(hash(n +   0.0), hash(n +   1.0), f.x),
-							mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
-						mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
-							mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
-		}
-
-		mat3 m = mat3( 0.00,  1.60,  1.20, -1.60,  0.72, -0.96, -1.20, -0.96,  1.28 );
-
-		// Fractional Brownian motion
-		float fbm( vec3 p )
-		{
-			float f = 0.0;
-			f += noise(p) / 2; p = m * p * 1.1;
-			f += noise(p) / 4; p = m * p * 1.2;
-			f += noise(p) / 6; p = m * p * 1.3;
-			f += noise(p) / 12; p = m * p * 1.4;
-			f += noise(p) / 24;
-			return f;
-		}
-
-		vec3 skyColor( in vec3 rd )
-		{
-			vec3 moondir = normalize( lightPos );
-
-			float yd = min(rd.y, 0.);
-			rd.y = max(rd.y, 0.);
-
-			vec3 col = vec3(0.);
-			// render sky
-			float t = pow(1.0-0.7*rd.y, 1.0);
-			col += vec3(.1, .2, .4)*(1.0-t);
-			// moon
-			col += min( vec3(2.0, 2.0, 2.0), vec3(2.0,2.0,2.0) * pow( max(dot(rd,moondir),0.), 350.0 )) * 0.3;
-			// moon haze
-			col += 0.6* vec3(0.8,0.9,1.0) * pow( max(dot(rd,moondir),0.), 6.0 );
-
-			// stars
-			vec3 stars = vec3(0.,0.,0.);
-			vec3 scol = clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*120.), 120.) * 50. * (.5-pow(t,20.)), 0.0, 1.0);
-			stars = scol * (.3+fbm(rd)) * 5;
-			col += stars;
-
-			return col;
-		}
-
-		void main()
-		{
-			vec3 dir = vec3( normalize( inv_view * vec4(v.xy*vec2(resolution.x/resolution.y,1),-1.5,0.0) ) );
-			FragColor = vec4(skyColor(dir),1.0);
-		})";
-
-// clang-format on
 
 class Cyclorama
 {
@@ -565,6 +444,32 @@ public:
 	std::vector<float> vertices;
 };
 
+OrbitalCamera camera(68.0f, -0.1f, 25.0f);
+
+int scrn_width = 800;
+int scrn_height = 600;
+
+int shadow_width = 2048;
+int shadow_height = 2048;
+
+uint32_t sky_vertex_buffer_id, sky_gpu_mesh_id, sky_gpu_program;
+uint32_t scene_vertex_buffer_id, scene_gpu_mesh_id, scene_gpu_program;
+
+uint32_t depth_gpu_program, quad_vertex_buffer_id, quad_index_buffer_id, quad_gpu_mesh_id;
+std::shared_ptr<gfx::Framebuffer> depth_frame_buffer;
+
+float near_plane = 0.1f, far_plane = 200.0f;
+
+glm::vec3 point_light_pos(50);
+
+// create transformations
+glm::mat4 model = glm::mat4(1.0f);
+glm::mat4 view = glm::mat4(1.0f);
+glm::mat4 projection = glm::mat4(1.0f);
+
+glm::mat4 light_view = glm::mat4(1.0f);
+glm::mat4 light_projection = glm::mat4(1.0f);
+
 std::shared_ptr<Cyclorama> scene_cyclorama;
 std::shared_ptr<Sphere> sphere;
 
@@ -632,8 +537,6 @@ _init_scene()
 		in vec4 FragPosLightSpace;
 
 		uniform vec3 lightPos;     // Position of the point light
-		uniform vec3 lightColor;   // Color of the light
-		uniform float lightPower;  // Power of the light
 
 		uniform bool use_checker_texture;
 		uniform float scale; // Adjust this value for larger/smaller squares
@@ -641,8 +544,6 @@ _init_scene()
 		uniform vec3 color2; // black
 
 		uniform float gamma;
-		uniform float ambient_factor;
-
 
 		uniform sampler2D shadowMap;
 
@@ -705,19 +606,19 @@ _init_scene()
 
 		vec3 Uncharted2ToneMapping(vec3 color)
 		{
-				float A = 0.15;
-				float B = 0.50;
-				float C = 0.10;
-				float D = 0.20;
-				float E = 0.02;
-				float F = 0.30;
-				float W = 11.2;
-				float exposure = 2.;
-				color *= exposure;
-				color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
-				float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
-				color /= white;
-				return color;
+			float A = 0.15;
+			float B = 0.50;
+			float C = 0.10;
+			float D = 0.20;
+			float E = 0.02;
+			float F = 0.30;
+			float W = 11.2;
+			float exposure = 2.;
+			color *= exposure;
+			color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - E / F;
+			float white = ((W * (A * W + C * B) + D * E) / (W * (A * W + B) + D * F)) - E / F;
+			color /= white;
+			return color;
 		}
 
 		void main()
@@ -740,16 +641,16 @@ _init_scene()
 
 			// Calculate the diffuse component
 			float diff = max(dot(norm, lightDir), 0.0);
-			vec3 diffuse = vec3(1.) * diff;
+			vec3 diffuse = vec3(1.0) * diff;
 
-			float shad = 1.;
+			float shad = 1.0;
 			vec3 indirect = vec3(0.5,0.5,0.5);
-			final_col = final_col* vec4((diffuse*shad+indirect*.5), 1.0);
-			vec3 tone = Uncharted2ToneMapping((final_col ).xyz);
+			final_col = final_col * vec4((diffuse*shad+indirect * 0.5), 1.0);
+
+			vec3 tone = Uncharted2ToneMapping((final_col).xyz);
 			final_col = vec4(tone, 1.0);
 
 			// skip back faces from shadow calculation
-
 			if (gl_FrontFacing == false)
 			{
 				FragColor = final_col;
@@ -842,13 +743,7 @@ _draw_scene()
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "view", view);
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "projection", projection);
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "lightSpaceMatrix", light_projection * light_view);
-
 	gfx_backend->setGPUProgramVec3(scene_gpu_program, "lightPos", point_light_pos);
-	gfx_backend->setGPUProgramVec3(scene_gpu_program, "lightColor", light_color);
-	gfx_backend->setGPUProgramFloat(scene_gpu_program, "lightPower", point_light_power);
-
-	gfx_backend->setGPUProgramFloat(scene_gpu_program, "gamma", gamma);
-	gfx_backend->setGPUProgramFloat(scene_gpu_program, "ambient_factor", ambient_factor);
 
 	// render cyclorama
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "model", scene_cyclorama->model);
@@ -871,6 +766,93 @@ void
 init()
 {
 	// clang-format off
+
+	const char* sky_vertexShader = R"(
+		#version 450 core
+
+		layout (location = 0) in vec3 Position;
+
+		out vec2 v;
+
+		void main()
+		{
+			v = Position.xy;
+			gl_Position = vec4(Position, 1.0);
+		})";
+
+		// refrence shader : https://www.shadertoy.com/view/4dl3z7
+		const char* sky_fragmentShader =R"(
+		#version 450 core
+		uniform mat4 inv_view;
+		uniform vec2 resolution;
+		uniform vec3 lightPos;
+		uniform vec3 cameraPos;
+
+		in vec2 v;
+
+		out vec4 FragColor;
+
+		// random/hash function
+		float hash(float n)
+		{
+			return fract(sin(n) * 43758.5453123);
+		}
+
+		float noise(vec3 x)
+		{
+			vec3 f = fract(x);
+			float n = dot(floor(x), vec3(1.0, 157.0, 113.0));
+			return mix(mix(mix(hash(n +   0.0), hash(n +   1.0), f.x),
+							mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
+						mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+							mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
+		}
+
+		mat3 m = mat3( 0.00,  1.60,  1.20, -1.60,  0.72, -0.96, -1.20, -0.96,  1.28 );
+
+		// Fractional Brownian motion
+		float fbm( vec3 p )
+		{
+			float f = 0.0;
+			f += noise(p) / 2; p = m * p * 1.1;
+			f += noise(p) / 4; p = m * p * 1.2;
+			f += noise(p) / 6; p = m * p * 1.3;
+			f += noise(p) / 12; p = m * p * 1.4;
+			f += noise(p) / 24;
+			return f;
+		}
+
+		vec3 skyColor( in vec3 rd )
+		{
+			vec3 moondir = normalize( lightPos );
+
+			float yd = min(rd.y, 0.);
+			rd.y = max(rd.y, 0.);
+
+			vec3 col = vec3(0.);
+			// render sky
+			float t = pow(1.0-0.7*rd.y, 1.0);
+			col += vec3(.1, .2, .4)*(1.0-t);
+			// moon
+			col += min( vec3(2.0, 2.0, 2.0), vec3(2.0,2.0,2.0) * pow( max(dot(rd,moondir),0.), 350.0 )) * 0.3;
+			// moon haze
+			col += 0.6* vec3(0.8,0.9,1.0) * pow( max(dot(rd,moondir),0.), 6.0 );
+
+			// stars
+			vec3 stars = vec3(0.,0.,0.);
+			vec3 scol = clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*120.), 120.) * 50. * (.5-pow(t,20.)), 0.0, 1.0);
+			stars = scol * (.3+fbm(rd)) * 5;
+			col += stars;
+
+			return col;
+		}
+
+		void main()
+		{
+			vec3 dir = vec3( normalize( inv_view * vec4(v.xy*vec2(resolution.x/resolution.y,1),-1.5,0.0) ) );
+			FragColor = vec4(skyColor(dir),1.0);
+		})";
+
 	float vertices[] = {
 		-1.0f, -1.0f, 0.0f,
 		 1.0f, -1.0f, 0.0f,
@@ -960,7 +942,7 @@ main()
 {
 	// initialize gfx
 	// ---------------------------------------
-	gfx_backend->init("clouds shader example", scrn_width, scrn_height);
+	gfx_backend->init("night directional light example", scrn_width, scrn_height);
 	gfx_backend->on_Init(init);
 	gfx_backend->on_Render(render);
 	gfx_backend->on_Resize(resize);
