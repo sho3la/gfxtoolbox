@@ -27,6 +27,21 @@ struct OrbitalCamera
 		return glm::lookAt(cameraPosition, target, glm::vec3(0, 1, 0));
 	}
 
+	glm::vec3
+	getPosition()
+	{
+		// Convert spherical coordinates to Cartesian coordinates
+		float x = distance * cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
+		float y = distance * sin(glm::radians(elevation));
+		float z = distance * cos(glm::radians(elevation)) * sin(glm::radians(azimuth));
+
+		// Create the camera position
+		glm::vec3 cameraPosition(x, y, z);
+
+		// The view matrix is the inverse of the look-at matrix
+		return cameraPosition;
+	}
+
 	void
 	zoom(float yoffset)
 	{
@@ -128,35 +143,33 @@ const char* vertexShader = R"(
 			gl_Position = vec4(Position, 1.0);
 		})";
 
+// refrence shader : https://www.shadertoy.com/view/4dl3z7
 const char* fragmentShader =R"(
 		#version 450 core
 		uniform mat4 inv_view;
 		uniform vec2 resolution;
 		uniform vec3 lightPos;
+		uniform vec3 cameraPos;
 
 		in vec2 v;
 
 		out vec4 FragColor;
 
 		// random/hash function
-		float hash( float n )
+		float hash(float n)
 		{
-		  return fract(cos(n)*41415.92653);
+			return fract(sin(n) * 43758.5453123);
 		}
 
-		// 3d noise function
-		float noise( in vec3 x )
+		float noise(vec3 x)
 		{
-			vec3 p  = floor(x);
-			vec3 f  = smoothstep(0.0, 1.0, fract(x));
-			float n = p.x + p.y*57.0 + 500.0*p.z;
-
-			return mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
-			mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
-			mix(mix( hash(n+113.0), hash(n+114.0),f.x),
-			mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
+			vec3 f = fract(x);
+			float n = dot(floor(x), vec3(1.0, 157.0, 113.0));
+			return mix(mix(mix(hash(n +   0.0), hash(n +   1.0), f.x),
+							mix(hash(n + 157.0), hash(n + 158.0), f.x), f.y),
+						mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+							mix(hash(n + 270.0), hash(n + 271.0), f.x), f.y), f.z);
 		}
-
 
 		mat3 m = mat3( 0.00,  1.60,  1.20, -1.60,  0.72, -0.96, -1.20, -0.96,  1.28 );
 
@@ -191,10 +204,32 @@ const char* fragmentShader =R"(
 			// stars
 			vec3 stars = vec3(0.,0.,0.);
 			vec3 scol = clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*120.), 120.) * 50. * (.5-pow(t,20.)), 0.0, 1.0);
-			//scol += clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*160.), 300.) * 40. * (.5-pow(t,20.)), 0.0, 1.0);
-
-			stars = scol * (.3+.7*fbm(rd));
+			stars = scol * (.3+fbm(rd)) * 3;
 			col += stars;
+
+			// Clouds
+			vec2 shift = vec2( 2000.0, 2080.0 );
+			vec4 sum = vec4(0,0,0,0); 
+			for (int q=1000; q<1060; q++) // 120 layers
+			{
+				if (sum.w>0.999)
+				 break;
+				float c = (float(q-1000)*10.0+350.0-cameraPos.y) / rd.y; // cloud height
+				vec3 cpos = cameraPos + c*rd + vec3(831.0+shift.x, 321.0+float(q-1000)*.15-shift.x*0.2, 1330.0+shift.y); // cloud position
+			
+				float alpha = smoothstep(0.5, 1.0, fbm( cpos*0.0015 ))*.9; // fractal cloud density
+				vec3 localcolor = mix(vec3( 1.1, 1.05, 1.0 ), 0.7*vec3( 0.4,0.4,0.3 ), alpha); // density color white->gray
+				alpha = (1.0-sum.w)*alpha; // alpha/density saturation (the more a cloud layer's density, the more the higher layers will be hidden)
+				sum += vec4(localcolor*alpha, alpha); // sum up weightened color
+			}
+			
+				float alpha = smoothstep(0.7, 1.0, sum.w);
+				float dotval = max(dot(rd,moondir),0.);
+				sum.rgb /= sum.w+0.0001;
+				sum.rgb -= 0.6*vec3(0.8, 0.75, 0.7) * pow(dotval,10.0)*alpha;
+				sum.rgb += 0.2*vec3(1.2, 1.2, 1.2) * pow(dotval,5.0)*(1.0-alpha);
+
+				col = mix( col, sum.rgb , 1.0*sum.w*pow(dotval,3.0)*(1.0-pow(t,10.)) );
 
 			return col;
 		}
@@ -309,6 +344,7 @@ render()
 	gfx_backend->setGPUProgramMat4(gpu_program, "inv_view", glm::inverse(view));
 	gfx_backend->setGPUProgramVec2(gpu_program, "resolution", glm::vec2(scrn_width, scrn_height));
 	gfx_backend->setGPUProgramVec3(gpu_program, "lightPos", glm::vec3(50));
+	gfx_backend->setGPUProgramVec3(gpu_program, "cameraPos", camera.getPosition());
 
 	glDisable(GL_DEPTH_TEST);
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES_STRIP, gpu_mesh_id, 4);
