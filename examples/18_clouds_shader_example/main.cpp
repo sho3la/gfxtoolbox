@@ -144,25 +144,14 @@ const char* fragmentShader =R"(
 		  return fract(cos(n)*41415.92653);
 		}
 
-		// 2d noise function
-		float noise( in vec2 x )
-		{
-		  vec2 p  = floor(x);
-		  vec2 f  = smoothstep(0.0, 1.0, fract(x));
-		  float n = p.x + p.y*57.0;
-
-		  return mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
-			mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);
-		}
-
 		// 3d noise function
 		float noise( in vec3 x )
 		{
-		  vec3 p  = floor(x);
-		  vec3 f  = smoothstep(0.0, 1.0, fract(x));
-		  float n = p.x + p.y*57.0 + 113.0*p.z;
+			vec3 p  = floor(x);
+			vec3 f  = smoothstep(0.0, 1.0, fract(x));
+			float n = p.x + p.y*57.0 + 500.0*p.z;
 
-		  return mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+			return mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
 			mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
 			mix(mix( hash(n+113.0), hash(n+114.0),f.x),
 			mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
@@ -174,11 +163,13 @@ const char* fragmentShader =R"(
 		// Fractional Brownian motion
 		float fbm( vec3 p )
 		{
-		  float f = 0.5000*noise( p ); p = m*p*1.2;
-		  f += 0.2500*noise( p ); p = m*p*1.3;
-		  f += 0.1666*noise( p ); p = m*p*1.4;
-		  f += 0.0834*noise( p );
-		  return f;
+			float f = 0.0;
+			f += noise(p) / 2; p = m * p * 1.1;
+			f += noise(p) / 4; p = m * p * 1.2;
+			f += noise(p) / 6; p = m * p * 1.3;
+			f += noise(p) / 12; p = m * p * 1.4;
+			f += noise(p) / 24;
+			return f;
 		}
 
 		vec3 skyColor( in vec3 rd )
@@ -200,7 +191,7 @@ const char* fragmentShader =R"(
 			// stars
 			vec3 stars = vec3(0.,0.,0.);
 			vec3 scol = clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*120.), 120.) * 50. * (.5-pow(t,20.)), 0.0, 1.0);
-			scol += clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*160.), 300.) * 40. * (.5-pow(t,20.)), 0.0, 1.0);
+			//scol += clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*160.), 300.) * 40. * (.5-pow(t,20.)), 0.0, 1.0);
 
 			stars = scol * (.3+.7*fbm(rd));
 			col += stars;
