@@ -660,6 +660,7 @@ _init_scene()
 				// calculate shadow
 				float shadow = ShadowCalculation(FragPosLightSpace);
 				vec3 result = ((1.0 - shadow * 0.7)) * final_col.xyz;
+				result = mix(result, vec3(0.7, 0.7, 0.8), 0.2);
 				FragColor = vec4(result, 1.0);
 			}
 		})";
