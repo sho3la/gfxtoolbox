@@ -204,32 +204,8 @@ const char* fragmentShader =R"(
 			// stars
 			vec3 stars = vec3(0.,0.,0.);
 			vec3 scol = clamp(vec3(1.2, 1.0, 0.8) * pow(noise(rd*120.), 120.) * 50. * (.5-pow(t,20.)), 0.0, 1.0);
-			stars = scol * (.3+fbm(rd)) * 3;
+			stars = scol * (.3+fbm(rd)) * 5;
 			col += stars;
-
-			// Clouds
-			vec2 shift = vec2( 2000.0, 2080.0 );
-			vec4 sum = vec4(0,0,0,0); 
-			for (int q=1000; q<1060; q++) // 120 layers
-			{
-				if (sum.w>0.999)
-				 break;
-				float c = (float(q-1000)*10.0+350.0-cameraPos.y) / rd.y; // cloud height
-				vec3 cpos = cameraPos + c*rd + vec3(831.0+shift.x, 321.0+float(q-1000)*.15-shift.x*0.2, 1330.0+shift.y); // cloud position
-			
-				float alpha = smoothstep(0.5, 1.0, fbm( cpos*0.0015 ))*.9; // fractal cloud density
-				vec3 localcolor = mix(vec3( 1.1, 1.05, 1.0 ), 0.7*vec3( 0.4,0.4,0.3 ), alpha); // density color white->gray
-				alpha = (1.0-sum.w)*alpha; // alpha/density saturation (the more a cloud layer's density, the more the higher layers will be hidden)
-				sum += vec4(localcolor*alpha, alpha); // sum up weightened color
-			}
-			
-				float alpha = smoothstep(0.7, 1.0, sum.w);
-				float dotval = max(dot(rd,moondir),0.);
-				sum.rgb /= sum.w+0.0001;
-				sum.rgb -= 0.6*vec3(0.8, 0.75, 0.7) * pow(dotval,10.0)*alpha;
-				sum.rgb += 0.2*vec3(1.2, 1.2, 1.2) * pow(dotval,5.0)*(1.0-alpha);
-
-				col = mix( col, sum.rgb , 1.0*sum.w*pow(dotval,3.0)*(1.0-pow(t,10.)) );
 
 			return col;
 		}
