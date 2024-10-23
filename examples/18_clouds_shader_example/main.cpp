@@ -115,7 +115,7 @@ public:
 
 		scale_val = 40.0f;
 		color1 = glm::vec3(1.0f, 1.0f, 1.0f);
-		color2 = glm::vec3(0.8f, 0.8f, 0.8f);
+		color2 = glm::vec3(0.6f, 0.6f, 1.0f);
 	}
 
 	~Plane() {}
@@ -514,7 +514,7 @@ _init_scene()
 			vec3 indirect = vec3(0.5,0.5,0.5);
 			final_col = final_col * vec4((diffuse*shad+indirect * 0.5), 1.0);
 
-			vec3 tone = Uncharted2ToneMapping((final_col * 1.5).xyz);
+			vec3 tone = Uncharted2ToneMapping((final_col * 2).xyz);
 			final_col = vec4(tone, 1.0);
 
 			// skip back faces from shadow calculation
