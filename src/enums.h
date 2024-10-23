@@ -17,6 +17,13 @@ namespace gfx
 		TRIANGLES_STRIP
 	};
 
+	enum GFX_Settings
+	{
+		DEPTH_TEST,
+		BLENDING,
+		CULLING,
+	};
+
 	enum Wrapping_Mode
 	{
 		REPEAT,
