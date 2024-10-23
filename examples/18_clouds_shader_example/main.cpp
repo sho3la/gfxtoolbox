@@ -460,7 +460,7 @@ std::shared_ptr<gfx::Framebuffer> depth_frame_buffer;
 
 float near_plane = 0.1f, far_plane = 200.0f;
 
-glm::vec3 point_light_pos(50);
+glm::vec3 light_pos(50.0, 50.0, 50.0);
 
 // create transformations
 glm::mat4 model = glm::mat4(1.0f);
@@ -647,7 +647,7 @@ _init_scene()
 			vec3 indirect = vec3(0.5,0.5,0.5);
 			final_col = final_col * vec4((diffuse*shad+indirect * 0.5), 1.0);
 
-			vec3 tone = Uncharted2ToneMapping((final_col).xyz);
+			vec3 tone = Uncharted2ToneMapping((final_col * 1.5).xyz);
 			final_col = vec4(tone, 1.0);
 
 			// skip back faces from shadow calculation
@@ -674,7 +674,7 @@ _init_scene()
 	scene_cyclorama = std::make_shared<Cyclorama>();
 	sphere = std::make_shared<Sphere>();
 
-	light_view = glm::lookAt(point_light_pos, camera.target, glm::vec3(0, 1, 0));
+	light_view = glm::lookAt(light_pos, camera.target, glm::vec3(0, 1, 0));
 	light_projection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
 
 	// clang-format off
@@ -744,7 +744,7 @@ _draw_scene()
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "view", view);
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "projection", projection);
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "lightSpaceMatrix", light_projection * light_view);
-	gfx_backend->setGPUProgramVec3(scene_gpu_program, "lightPos", point_light_pos);
+	gfx_backend->setGPUProgramVec3(scene_gpu_program, "lightPos", light_pos);
 
 	// render cyclorama
 	gfx_backend->setGPUProgramMat4(scene_gpu_program, "model", scene_cyclorama->model);
@@ -888,7 +888,7 @@ render()
 	view = camera.getViewMatrix();
 	gfx_backend->setGPUProgramMat4(sky_gpu_program, "inv_view", glm::inverse(view));
 	gfx_backend->setGPUProgramVec2(sky_gpu_program, "resolution", glm::vec2(scrn_width, scrn_height));
-	gfx_backend->setGPUProgramVec3(sky_gpu_program, "lightPos", glm::vec3(50));
+	gfx_backend->setGPUProgramVec3(sky_gpu_program, "lightPos", light_pos);
 	gfx_backend->setGPUProgramVec3(sky_gpu_program, "cameraPos", camera.getPosition());
 
 	glDisable(GL_DEPTH_TEST);
