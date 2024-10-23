@@ -11,4 +11,5 @@ small gfx library with examples with OpenGL4 C++
 |10 - Imgui  <br> <img width="200" src="./screenshots/10_example.gif"> |11 - Framebuffer <br> <img width="200" src="./screenshots/11_example.gif"> | 12 - Checker Pattern <br> <img width="200" src="./screenshots/12_example.gif"> |
 |13 - Point Light <br> <img width="200" src="./screenshots/13_example.PNG"> |14 - Depth Buffer <br> <img width="200" src="./screenshots/14_example.PNG"> |15 - Geometry Shader <br> <img width="200" src="./screenshots/15_example.PNG"> |
 |16 - Shadow Mapping <br> <img width="200" src="./screenshots/16_example.PNG"> |17 - Sky Shader <br> <img width="200" src="./screenshots/17_example.gif"> |18 - Clouds Shader <br> <img width="200" src="./screenshots/18_example.gif"> |
+|19 - Night Directional Light <br> <img width="200" src="./screenshots/19_example.gif"> |
 
