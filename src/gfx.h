@@ -12,10 +12,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <iostream>
-#include <string>
-#include <map>
 #include <functional>
+#include <iostream>
+#include <map>
+#include <string>
 
 namespace gfx
 {
@@ -58,6 +58,12 @@ namespace gfx
 
 		void
 		clearBuffer();
+
+		void
+		enableSetting(GFX_Settings settings);
+
+		void
+		disableSetting(GFX_Settings settings);
 
 		void
 		updateViewport(uint32_t width, uint32_t height);
@@ -139,7 +145,7 @@ namespace gfx
 	private:
 		glm::vec4 m_clearcolor;
 		GLFWwindow* window;
-		
+
 		// gfx api callbacks
 		std::function<void()> m_initCallback;
 		std::function<void()> m_renderCallback;

@@ -757,9 +757,9 @@ render()
 	gfx_backend->setGPUProgramVec3(sky_gpu_program, "lightPos", light_pos);
 	gfx_backend->setGPUProgramVec3(sky_gpu_program, "cameraPos", camera.getPosition());
 
-	glDisable(GL_DEPTH_TEST);
+	gfx_backend->disableSetting(gfx::GFX_Settings::DEPTH_TEST);
 	gfx_backend->draw(gfx::GFX_Primitive::TRIANGLES_STRIP, sky_gpu_mesh_id, 4);
-	glEnable(GL_DEPTH_TEST);
+	gfx_backend->enableSetting(gfx::GFX_Settings::DEPTH_TEST);
 
 	_draw_scene();
 }

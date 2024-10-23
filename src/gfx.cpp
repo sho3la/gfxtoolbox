@@ -285,6 +285,44 @@ namespace gfx
 	}
 
 	void
+	GFX::enableSetting(GFX_Settings settings)
+	{
+		switch (settings)
+		{
+		case gfx::DEPTH_TEST:
+			glEnable(GL_DEPTH_TEST);
+			break;
+		case gfx::BLENDING:
+			glEnable(GL_BLEND);
+			break;
+		case gfx::CULLING:
+			glEnable(GL_CULL_FACE);
+			break;
+		default:
+			break;
+		}
+	}
+
+	void
+	GFX::disableSetting(GFX_Settings settings)
+	{
+		switch (settings)
+		{
+		case gfx::DEPTH_TEST:
+			glDisable(GL_DEPTH_TEST);
+			break;
+		case gfx::BLENDING:
+			glDisable(GL_BLEND);
+			break;
+		case gfx::CULLING:
+			glDisable(GL_CULL_FACE);
+			break;
+		default:
+			break;
+		}
+	}
+
+	void
 	GFX::updateViewport(uint32_t width, uint32_t height)
 	{
 		glViewport(0, 0, width, height);
