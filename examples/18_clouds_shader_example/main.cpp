@@ -515,6 +515,11 @@ _init_scene()
 			final_col = final_col * vec4((diffuse*shad+indirect * 0.5), 1.0);
 
 			vec3 tone = Uncharted2ToneMapping((final_col * 2).xyz);
+
+			// gamma correction
+			float gamma = 2.0;
+			tone = pow(tone, vec3(1.0/gamma));
+
 			final_col = vec4(tone, 1.0);
 
 			// skip back faces from shadow calculation
