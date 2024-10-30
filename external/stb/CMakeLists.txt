@@ -19,6 +19,7 @@ add_library(stb STATIC
 
 # add d suffix in debug mode
 set_target_properties(stb PROPERTIES DEBUG_POSTFIX d)
+set_target_properties(stb PROPERTIES FOLDER External)
 
 # define debug macro
 target_compile_definitions(stb PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")

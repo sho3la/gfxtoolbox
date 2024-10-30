@@ -49,6 +49,7 @@ endif()
 
 # add d suffix in debug mode
 set_target_properties(glew PROPERTIES DEBUG_POSTFIX d)
+set_target_properties(glew PROPERTIES FOLDER External)
 
 # define debug macro
 target_compile_definitions(glew PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")

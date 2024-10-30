@@ -50,6 +50,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 	DEBUG_POSTFIX d
 )
 
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER External)
+
 # generate exports header file
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME}
