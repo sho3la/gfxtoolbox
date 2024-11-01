@@ -3,16 +3,13 @@ cmake_minimum_required(VERSION 3.16)
 set(PROJECT_NAME 01_window_example)
 
 add_executable(${PROJECT_NAME}
-	KHR/khrplatform.h
 	main.cpp
-	glad/glad.h
-	glad/glad.c
  )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER Examples)
 
 target_link_libraries(${PROJECT_NAME}
-	glfw
+    gfx
 )
 
 if (DEFINED EMSCRIPTEN)

@@ -1,11 +1,9 @@
 #pragma once
-#include "Image.h"
-#include "Image3D.h"
 #include "attributes.h"
 #include "enums.h"
 #include "gpu_attribute.h"
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
@@ -54,6 +52,9 @@ namespace gfx
 		getMouse_position();
 
 		void
+		checkGLError();
+
+		void
 		setClearColor(glm::vec4 color);
 
 		void
@@ -81,33 +82,7 @@ namespace gfx
 		createGPUMesh(uint32_t vertex_buffer, uint32_t index_buffer, const Attributes& attribs);
 
 		uint32_t
-		createTexture1D(
-			Image* img,
-			Wrapping_Mode wrap_mode,
-			Filtering_Mode minifying_mode,
-			Filtering_Mode magnifying_mode);
-
-		uint32_t
-		createTexture2D(
-			Image* img,
-			Wrapping_Mode wrap_mode,
-			Filtering_Mode minifying_mode,
-			Filtering_Mode magnifying_mode,
-			bool enable_mipmaps);
-
-		uint32_t
-		createTexture3D(
-			Image3D* img,
-			Wrapping_Mode wrap_mode,
-			Filtering_Mode minifying_mode,
-			Filtering_Mode magnifying_mode,
-			bool enable_mipmaps);
-
-		uint32_t
 		createGPUProgram(const char* vs, const char* fs);
-
-		uint32_t
-		createGPUProgram(const char* vs, const char* gs, const char* fs);
 
 		void
 		bindGPUProgram(uint32_t gpu_program);
@@ -128,21 +103,15 @@ namespace gfx
 		setGPUProgramInt(uint32_t gpu_program, const std::string& name, const int& val);
 
 		void
-		bindTexture1D(uint32_t texture1d);
-
-		void
-		bindTexture2D(uint32_t texture2d);
-
-		void
-		bindTexture3D(uint32_t texture3d);
-
-		void
 		draw(GFX_Primitive type, uint32_t gpu_mesh_id, uint32_t vertices_count);
 
 		void
 		draw_indexed(GFX_Primitive type, uint32_t gpu_mesh_id, uint32_t indices_count);
 
 	private:
+		static void
+		render_frame(void* arg);
+
 		glm::vec4 m_clearcolor;
 		GLFWwindow* window;
 

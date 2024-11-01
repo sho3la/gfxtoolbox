@@ -8,18 +8,12 @@ set(HEADER_FILES
 	enums.h
 	attributes.h
 	gpu_attribute.h
-	Image.h
-	Image3D.h
-	gfx_fbo.h
 )
 
 set(SOURCE_FILES
 	gfx.cpp
 	attributes.cpp
 	gpu_attribute.cpp
-	Image.cpp
-	Image3D.cpp
-	gfx_fbo.cpp
 )
 
 # add library target
@@ -28,19 +22,16 @@ add_library(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
 # list linked libraries
 target_link_libraries(${PROJECT_NAME}
 	glfw
-	glew
-	stb
-	imgui
+	glad
 )
 
 # list include directories
 target_include_directories(${PROJECT_NAME}
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/
-	${CMAKE_SOURCE_DIR}/external/glew/include
+	${CMAKE_SOURCE_DIR}/external/glad
 	${CMAKE_SOURCE_DIR}/external/glfw-3.4/include
 	${CMAKE_SOURCE_DIR}/external/glm-1.0.1/
-	${CMAKE_SOURCE_DIR}/external/imgui-1.91.1/
 )
 
 # enable C++17

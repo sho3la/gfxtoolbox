@@ -19,21 +19,26 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN")
 set(CMAKE_BUILD_RPATH "$ORIGIN")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-option(BUILD_GL4 "Build OpenGL 4 backend." ON)
-option(BUILD_GL4_EXAMPLES "Build example applications that showcase." ON)
+option(BUILD_GL4 "Build OpenGL 4 backend." OFF)
+option(BUILD_GL4_EXAMPLES "Build example applications that showcase." OFF)
 
-option(BUILD_GLES3 "Build OpenGL ES 3 backend." OFF)
-option(BUILD_GLES3_EXAMPLES "Build example applications that showcase." OFF)
-
-add_subdirectory(external/glew EXCLUDE_FROM_ALL)
-add_subdirectory(external/glfw-3.4)
-add_subdirectory(external/stb)
-add_subdirectory(external/imgui-1.91.1)
+option(BUILD_GLES3 "Build OpenGL ES 3 backend." ON)
+option(BUILD_GLES3_EXAMPLES "Build example applications that showcase." ON)
 
 if (BUILD_GL4)
+	add_subdirectory(external/glew EXCLUDE_FROM_ALL)
+	add_subdirectory(external/glfw-3.4)
+	add_subdirectory(external/stb)
+	add_subdirectory(external/imgui-1.91.1)
+	
 	add_subdirectory(GL4)
 endif ()
 
 if (BUILD_GLES3)
+	if (NOT DEFINED EMSCRIPTEN)
+		add_subdirectory(external/glfw-3.4)
+	endif (NOT DEFINED EMSCRIPTEN)
+	
+	add_subdirectory(external/glad)
 	add_subdirectory(GLES3)
 endif ()

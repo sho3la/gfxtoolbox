@@ -22,7 +22,7 @@
 #endif
 
 #ifndef GFX_DEPRECATED
-#  define GFX_DEPRECATED __declspec(deprecated)
+#  define GFX_DEPRECATED __attribute__ ((__deprecated__))
 #endif
 
 #ifndef GFX_DEPRECATED_EXPORT
